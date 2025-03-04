@@ -845,8 +845,8 @@ MonoBehaviour:
   - {fileID: 733273477}
   - {fileID: 1819490606}
   - {fileID: 285853258}
-  stimulusColor: {r: 1, g: 0.0654718, b: 0, a: 1}
-  defaultColor: {r: 0.38431376, g: 0.38431376, b: 0.3803922, a: 1}
+  stimulusColor: {fileID: 2100000, guid: 21ca8723c11d2d34abf1e9e595b0942a, type: 2}
+  defaultColor: {fileID: 2100000, guid: 88b3961b9a9bd064ebcc2f4cbf42faf0, type: 2}
   forcedMatchCount: 5
 --- !u!4 &680355566
 Transform:
@@ -870,12 +870,12 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 680355564}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 3e7b3267ff07f4b1eaed773e128c0918, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  n: 2
+  n: 1
   totalTrials: 20
   stimulusInterval: 2
   audioSource: {fileID: 1979154491}
@@ -1115,7 +1115,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &832575518
 MonoBehaviour:
   m_ObjectHideFlags: 0

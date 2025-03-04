@@ -506,7 +506,6 @@ MonoBehaviour:
   negativeImageList: []
   neutralImageList: []
   totalNegativeAppearances: 5
-  responseButtons: []
   iconContainer: {fileID: 290333025}
   type1List: []
   type2List: []
@@ -531,7 +530,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &1625229560
 MonoBehaviour:
   m_ObjectHideFlags: 0

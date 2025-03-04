@@ -17,9 +17,9 @@ public class NBackColorChange : MonoBehaviour
     [Tooltip("請指定場上九宮格的 Plane 物件")]
     public GameObject[] gridPlanes;
     [Tooltip("刺激時要變換的顏色")]
-    public Color stimulusColor = Color.yellow;
+    public Material stimulusColor; 
     [Tooltip("預設顏色 (刺激結束後恢復)")]
-    public Color defaultColor = Color.white;
+    public Material defaultColor;
 
     [Header("挑戰設定")]
     [Tooltip("指定必定出現的匹配試次數 (強制挑戰)，僅適用於試次編號 >= n")]
@@ -177,19 +177,19 @@ public class NBackColorChange : MonoBehaviour
         {
             if (plane.TryGetComponent<Renderer>(out Renderer renderer))
             {
-                renderer.material.color = defaultColor;
+                renderer.material = defaultColor;
             }
         }
     }
 
     // 設定指定 Plane 的顏色
-    void SetPlaneColor(int index, Color color)
+    void SetPlaneColor(int index, Material material)
     {
         if (index < 0 || index >= gridPlanes.Length)
             return;
         if (gridPlanes[index].TryGetComponent<Renderer>(out Renderer renderer))
         {
-            renderer.material.color = color;
+            renderer.material = material;
         }
     }
 
