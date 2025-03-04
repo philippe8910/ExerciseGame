@@ -678,7 +678,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6631dc4869a0e40b3b7c6276d60180af, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  emotionalFlankerTaskDataList: []
+  currentTaskData: {fileID: 11400000, guid: 76618e9fed7d64189b2e1d576e97f8c0, type: 2}
+  currentTrialData: []
+  middleLetterText: {fileID: 457063813}
+  flankerLetterText_0: {fileID: 1640900595}
+  flankerLetterText_1: {fileID: 2132368871}
+  redColor: {r: 1, g: 0, b: 0, a: 1}
+  greenColor: {r: 0, g: 1, b: 0, a: 1}
+  timeBetweenTrials: 1
+  responseTimeLimit: 2
+  negativeLatterCount: 10
+  totalTrialCount: 20
+  currentIndex: 0
 --- !u!1 &1625229559
 GameObject:
   m_ObjectHideFlags: 0

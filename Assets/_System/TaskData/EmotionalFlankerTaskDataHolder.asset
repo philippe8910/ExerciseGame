@@ -12,4 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 0}
   m_Name: EmotionalFlankerTaskDataHolder
   m_EditorClassIdentifier: Assembly-CSharp::EmotionalFlankerTaskDataHolder
-  emotionalFlankerTaskDataList: []
+  neutralLatter:
+  - WWW
+  - EEE
+  - RRR
+  negativeLatter:
+  - TTTT
+  - YYYY
+  - UUUU
