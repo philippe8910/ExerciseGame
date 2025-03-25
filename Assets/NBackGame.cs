@@ -111,8 +111,17 @@ public class NBackSeparateRandomWithExactDistribution : MonoBehaviour
             visualResponseList.Add(true);
         }
         
-
-        
+    }
+    
+    public static void Shuffle<T>(List<T> list)
+    {
+        int n = list.Count;
+        for (int i = 0; i < n - 1; i++)
+        {
+            int j = Random.Range(i, n); // UnityEngine.Random.Range
+            // 交換元素
+            (list[i], list[j]) = (list[j], list[i]);
+        }
     }
     
     
