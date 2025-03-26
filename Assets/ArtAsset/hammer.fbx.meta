@@ -1,9 +1,14 @@
 fileFormatVersion: 2
-guid: 93ecb1eb231cf374184577fb686e35fe
+guid: 5fee4fca7f848ef4bb206a3b74957e26
 ModelImporter:
   serializedVersion: 22200
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Hammer_
+    second: {fileID: 2100000, guid: 1a35ea03ca6916841a4548068b340719, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0
@@ -70,11 +75,11 @@ ModelImporter:
     useFileScale: 1
     strictVertexDataChecks: 0
   tangentSpace:
-    normalSmoothAngle: 60
+    normalSmoothAngle: 88
     normalImportMode: 0
-    tangentImportMode: 3
+    tangentImportMode: 2
     normalCalculationMode: 4
-    legacyComputeAllNormalsFromSmoothingGroupsWhenMeshHasBlendShapes: 0
+    legacyComputeAllNormalsFromSmoothingGroupsWhenMeshHasBlendShapes: 1
     blendShapeNormalImportMode: 1
     normalSmoothingSource: 0
   referencedClips: []
