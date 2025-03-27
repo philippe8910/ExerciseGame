@@ -1437,7 +1437,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   n: 1
   totalTrials: 20
-  stimulusInterval: 2
+  stimulusInterval: []
   visualTrials: 5
   audioTrials: 5
   bothTrials: 2
@@ -1451,8 +1451,6 @@ MonoBehaviour:
   - {fileID: 733273477}
   - {fileID: 1819490606}
   - {fileID: 285853258}
-  stimulusColor: {fileID: 2100000, guid: 21ca8723c11d2d34abf1e9e595b0942a, type: 2}
-  defaultColor: {fileID: 2100000, guid: 88b3961b9a9bd064ebcc2f4cbf42faf0, type: 2}
   audioSource: {fileID: 1979154491}
   audioClips:
   - {fileID: 8300000, guid: 2fed6f6a07ad24b29a11acb98fddea40, type: 3}
@@ -1461,15 +1459,15 @@ MonoBehaviour:
   - {fileID: 8300000, guid: 6191d0f2e653843269eea36fc2f08b95, type: 3}
   - {fileID: 8300000, guid: c1043771873654fbc81f9e33b3f4d3c8, type: 3}
   - {fileID: 8300000, guid: dbf63886215fc4b6fb42d2fc67d982ee, type: 3}
-  imageResponseCount: 1
-  audioResponseCount: 1
-  bothResponseCount: 1
+  visualSprites: []
+  normalSprites: []
   visualKey: 32
   audioKey: 122
   visualIDList: 
   audioIDList: 
   visualResponseList: 
   audioResponseList: 
+  trialResults: []
 --- !u!1 &702679993
 GameObject:
   m_ObjectHideFlags: 0

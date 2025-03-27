@@ -16,7 +16,7 @@ public class TrialResult
     public string audioResultType;
 }
 
-public class NBackSeparateRandomWithExactDistribution : MonoBehaviour
+public class NBackGame : MonoBehaviour
 {
     [Header("n-back 設定")]
     [Range(1, 3), Tooltip("設定 n-back 數字，範圍 1~3")]
