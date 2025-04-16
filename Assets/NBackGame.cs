@@ -90,35 +90,37 @@ public class NBackGame : MonoBehaviour
                 plane.GetComponent<Renderer>().material.SetTexture("_BaseMap", null);
 
             bool isVisualOrFutureVisual = visualResponseList[i] || (i + n < visualResponseList.Count && visualResponseList[i + n]);
-            bool isVisualSimilar = false;
+            Sprite currentSprite;
             
             if (isVisualOrFutureVisual)
             {
                 if (this.totalVisualStimuli > currentVisualStimuli)
                 {
+                    currentSprite = stimuliSprites[vistualStimuliIndex];
                     gridPlanes[vID].GetComponent<Renderer>().material.SetTexture("_BaseMap", stimuliSprites[vistualStimuliIndex].texture);
-                    isVisualSimilar = true;
                     currentVisualStimuli++;
                 }
                 else
                 {
+                    currentSprite = normalSprites[vistualStimuliIndex];
                     gridPlanes[vID].GetComponent<Renderer>().material.SetTexture("_BaseMap", normalSprites[vistualStimuliIndex].texture);
                 }
             }
             else
             {
-                gridPlanes[vID].GetComponent<Renderer>().material.SetTexture("_BaseMap", visualAllSprites[Random.Range(0, visualAllSprites.Count)].texture);
+                int r = Random.Range(0, visualAllSprites.Count);
+                
+                currentSprite = visualAllSprites[r];
+                gridPlanes[vID].GetComponent<Renderer>().material.SetTexture("_BaseMap", visualAllSprites[r].texture);
             }
 
             bool isAudioOrFutureAudio = audioResponseList[i] || (i + n < audioResponseList.Count && audioResponseList[i + n]);
-            bool isAudioSimilar = false;
             
             if (isAudioOrFutureAudio)
             {
                 if (this.totalAudioStimuli > currentAudioStimuli)
                 {
                     audioSource.clip = audioClipsStimuli[aID];
-                    isAudioSimilar = true;
                     currentAudioStimuli++;
                 }
                 else
@@ -132,6 +134,9 @@ public class NBackGame : MonoBehaviour
             }
 
             audioSource.Play();
+            
+            bool isAudioSimilar = _audioClipsStimuli.Contains(audioSource.clip);
+            bool isVisualSimilar = _stimuliSprites.Contains(currentSprite);
 
             bool visualPressed = false, audioPressed = false;
             float visualRT = -1f, audioRT = -1f;
@@ -219,10 +224,16 @@ public class NBackGame : MonoBehaviour
 
     }
 
+    private List<Sprite> _stimuliSprites = new List<Sprite>();
+    private List<AudioClip> _audioClipsStimuli = new List<AudioClip>();
+
     private void Init()
    {
     bool success = false;
     totalTrials += n;
+    
+    _stimuliSprites = stimuliSprites.ToList();
+    _audioClipsStimuli = audioClipsStimuli.ToList();
     
     Shuffle(normalSprites);
     Shuffle(stimuliSprites);
