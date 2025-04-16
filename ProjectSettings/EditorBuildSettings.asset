@@ -9,6 +9,8 @@ EditorBuildSettings:
     path: Assets/_System/Scenes/N-Back.unity
     guid: 99c9720ab356a0642a771bea13969a05
   m_configObjects:
+    Unity.XR.Oculus.Settings: {fileID: 11400000, guid: 6ad1b04fef8d44665b4022c9abfef528,
+      type: 2}
     com.unity.xr.management.loader_settings: {fileID: 11400000, guid: ab0dae40bc879427fa5a9d28bc6f6618,
       type: 2}
     com.unity.xr.openxr.settings4: {fileID: 11400000, guid: 857038c846c474de7b050672a3cd2d83,
