@@ -57,11 +57,20 @@ public class EmotionalFlankerTaskSystem : MonoBehaviour
             while (Time.time - startTime < responseTime)
             {
                 // 檢查玩家是否有回應
-                if (Input.GetKeyDown(KeyCode.Space)) // 假設空白鍵為回應鍵
+                if (Input.GetKeyDown(KeyCode.RightArrow) && middleLetter.color == Color.green) // 假設空白鍵為回應鍵
                 {
                     data.responseTime = Time.time - startTime;
+                    data.isCorrect = true;
                     break;
                 }
+                
+                if (Input.GetKeyDown(KeyCode.LeftArrow) && middleLetter.color == Color.red) // 假設空白鍵為回應鍵
+                {
+                    data.responseTime = Time.time - startTime;
+                    data.isCorrect = true;
+                    break;
+                }
+                
                 yield return null; // 等待下一幀
             }
             
@@ -72,6 +81,19 @@ public class EmotionalFlankerTaskSystem : MonoBehaviour
             
             middleLetter.color = Color.white;
         }
+        
+        int totalCount = currentData.Count;
+        int correctCount = currentData.Count(d => d.isCorrect);
+
+// 防止除以零錯誤
+        float accuracy = totalCount > 0 ? (float)correctCount / totalCount * 100f : 0f;
+        float averageResponseTime = currentData.Where(d => d.isCorrect).Any()
+            ? currentData.Where(d => d.isCorrect).Average(d => d.responseTime)
+            : 0f;
+
+        Debug.Log($"✅ 正確率: {correctCount}/{totalCount} ({accuracy:F2}%)");
+        Debug.Log($"⏱️ 平均反應時間（正確題）: {averageResponseTime:F2} 秒");
+
     }
     
     private void ShuffleList<T>(List<T> list)
@@ -160,5 +182,6 @@ public class FlankerTaskData
     public string currentLetter;
     public Color midColor , OtherColor;
     public bool isNegative;
+    public bool isCorrect;
     public float responseTime;
 }
