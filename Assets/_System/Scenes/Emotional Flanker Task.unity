@@ -688,7 +688,9 @@ MonoBehaviour:
   greenColor: {r: 0, g: 1, b: 0, a: 1}
   timeBetweenTrials: 2
   responseTimeLimit:
-  - 0.1
+  - 1
+  - 1.5
+  - 2
 --- !u!1 &1625229559
 GameObject:
   m_ObjectHideFlags: 0

@@ -3,151 +3,249 @@ using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
+using UnityEngine.XR;
+using Random = UnityEngine.Random;
 
 [System.Serializable]
 public class TrialTypeInfo
 {
-    // 每筆資料包含一個 Sprite 與該題型的正確答案數量
-    public Sprite sprite;      
-    public int correctCount;   
+    public Sprite sprite;
+    public int correctCount;
 }
 
 public class EmotionalStroopCore : MonoBehaviour
 {
-    [Header("情緒圖片列表")]
-    public List<Sprite> negativeImageList;  // 負面圖片列表
-    public List<Sprite> neutralImageList;     // 中性圖片列表
-    
-    [Tooltip("設定總試次中負面圖片出現的次數")]
-    public int totalNegativeAppearances = 5;  // 負面圖片總出現次數
+    [Header("圖片資源")]
+    public List<Sprite> negativeImageList;
+    public List<Sprite> neutralImageList;
 
-    [Header("圖示生成區")]
-    public MeshRenderer iconContainer;           // 用於生成圖示的容器
+    [Tooltip("總負面圖片次數 (720 trials 中)")]
+    public int totalNegativeAppearances = 360;
 
+    [Header("UI 元件")]
+    public MeshRenderer iconContainer;
+    public Image iconImage;
+    public Image crossHairImage;
+    public GameObject restPanel;
+
+    [Header("Prefab")] 
     public GameObject congruentPrefab, incongruentPrefab, starsArrayPrefab;
 
-    [Header("生成次數設定")]
-    public int type1TrialCount = 5;       
-    public int type2TrialCount = 5;       
-    public int type3TrialCount = 5;       
+    [Header("設定")]
+    public float timeInterval = 2.0f;
 
-    [Header("其他參數")]
-    public float timeInterval = 2.0f;  // 顯示情緒圖片的間隔時間
-    
-    [Header("題目List")]
-    public List<StroopData> currentTrialList = new List<StroopData>(); // 當前試次的題目列表
+    private const int totalBlocks = 5;
+    private const int trialsPerBlock = 144;
 
-    private void Start()
+    public List<StroopData> currentTrialList = new();
+    private List<bool> isNegativeList = new();
+
+    private IEnumerator Start()
     {
         Init();
-        StartCoroutine(GameStart());
+        yield return StartCoroutine(StartExperiment());
     }
 
     public void Init()
     {
-        for (int i = 0; i < type1TrialCount; i++)
+        iconImage.sprite = null;
+
+        // 建立所有 trials
+        for (int i = 0; i < totalBlocks * trialsPerBlock; i++)
         {
             StroopData data = new StroopData();
-            data.type = StroopType.Congruent;
+            data.type = (StroopType)(i % 3); // 輪流填充類型
             currentTrialList.Add(data);
         }
-        
-        for (int i = 0; i < type2TrialCount; i++)
+
+        for (int i = 0; i < totalBlocks * trialsPerBlock; i++)
         {
-            StroopData data = new StroopData();
-            data.type = StroopType.Incongruent;
-            currentTrialList.Add(data);
+            isNegativeList.Add(false);
         }
-        
-        for (int i = 0; i < type3TrialCount; i++)
+        for (int i = 0; i < totalNegativeAppearances; i++)
         {
-            StroopData data = new StroopData();
-            data.type = StroopType.StarsArray;
-            currentTrialList.Add(data);
+            isNegativeList[i] = true;
         }
+
+        Shuffle(currentTrialList);
+        Shuffle(isNegativeList);
     }
 
-    public IEnumerator GameStart()
+    private IEnumerator StartExperiment()
     {
-        foreach (var data in currentTrialList)
+        for (int block = 0; block < totalBlocks; block++)
         {
-            yield return new WaitForSeconds(timeInterval);
+            Debug.Log($"🚩 Block {block + 1} 開始");
 
-            GameObject g = null;
+            var blockTrials = currentTrialList.Skip(block * trialsPerBlock).Take(trialsPerBlock).ToList();
+            var blockNegatives = isNegativeList.Skip(block * trialsPerBlock).Take(trialsPerBlock).ToList();
 
-            switch (data.type)
+            yield return StartCoroutine(RunBlock(blockTrials, blockNegatives));
+
+            if (block < totalBlocks - 1)
             {
-                case StroopType.Congruent:
-                    g = Instantiate(congruentPrefab, iconContainer.transform);
-                    break;
-                case StroopType.Incongruent:
-                    g = Instantiate(incongruentPrefab, iconContainer.transform);
-                    break;
-                case StroopType.StarsArray:
-                    g = Instantiate(starsArrayPrefab, iconContainer.transform);
-                    break;
+                restPanel.SetActive(true);
+                Debug.Log("🛋️ 請休息並同時按下雙手 Trigger 開始下一回合");
+                yield return StartCoroutine(WaitForBothHandsTrigger());
+                restPanel.SetActive(false);
             }
+        }
 
-            g.transform.localPosition = new Vector3(0, 0.25f, 0);
-            g.transform.localScale = new Vector3(1, 1, 1);
-            g.transform.localRotation = Quaternion.Euler(0,0,0);
+        ShowFinalResult();
+    }
+
+    private IEnumerator RunBlock(List<StroopData> trialList, List<bool> negativeList)
+    {
+        for (int i = 0; i < trialList.Count; i++)
+        {
+            StroopData data = trialList[i];
+
+            crossHairImage.gameObject.SetActive(true);
+            yield return new WaitForSeconds(0.5f);
+            crossHairImage.gameObject.SetActive(false);
+
+            iconImage.gameObject.SetActive(true);
+            SetImageForTrial(data, negativeList[i]);
+            yield return new WaitForSeconds(1.5f);
+            iconImage.gameObject.SetActive(false);
+            iconImage.sprite = null;
+
+            GameObject g = InstantiateTrialPrefab(data.type);
+            g.transform.SetParent(iconContainer.transform, false);
+            g.transform.localPosition = Vector3.up * 0.05f;
+            g.transform.localRotation = Quaternion.identity;
+            g.transform.localScale = Vector3.one;
+
+            yield return new WaitForSeconds(1.5f);
+            g.SetActive(false);
 
             float startTime = Time.time;
             bool responded = false;
 
-            // 非阻塞式等待
+            int correctCount = -1;
+            switch (data.type)
+            {
+                case StroopType.Congruent:
+                    correctCount = g.GetComponent<NumBackground>().enableNumber;
+                    break;
+                case StroopType.Incongruent:
+                    correctCount = g.GetComponent<RandomNumBackground>().enableNumber;
+                    break;
+                case StroopType.StarsArray:
+                    correctCount = g.GetComponent<RandomStarBackground>().enabledCount;
+                    break;
+            }
+
             while (Time.time - startTime < timeInterval)
             {
-                if (Input.GetKeyDown(KeyCode.Space))
+                if (triggerNumber != -1 && triggerNumber == correctCount)
                 {
                     data.responseTime = Time.time - startTime;
                     data.isCorrect = true;
                     responded = true;
                     break;
                 }
-                
-                int correctCount = -1;
-
-                switch (data.type)
+                else
                 {
-                    case StroopType.Congruent:
-                        correctCount = g.GetComponent<NumBackground>().enableNumber;
-                        break;
-                    case StroopType.Incongruent:
-                        correctCount = g.GetComponent<RandomNumBackground>().enableNumber;
-                        break;
-                    case StroopType.StarsArray:
-                        correctCount = g.GetComponent<RandomStarBackground>().enabledCount;
-                        break;
+                    data.responseTime = Time.time - startTime;
+                    data.isCorrect = false;
                 }
-                yield return null; // 👉 讓 Unity 可以繼續執行下一幀
+                yield return null;
             }
 
             if (!responded)
             {
                 data.isCorrect = false;
-                data.responseTime = timeInterval; // 或者設為 -1 表示沒反應
+                data.responseTime = timeInterval;
             }
 
             Destroy(g);
         }
-
-        Debug.Log("✅ 全部題目完成！");
     }
 
+    private IEnumerator WaitForBothHandsTrigger()
+    {
+        InputDevice left = InputDevices.GetDeviceAtXRNode(XRNode.LeftHand);
+        InputDevice right = InputDevices.GetDeviceAtXRNode(XRNode.RightHand);
+
+        bool leftPressed = false, rightPressed = false;
+
+        while (!(leftPressed && rightPressed))
+        {
+            left.TryGetFeatureValue(CommonUsages.triggerButton, out leftPressed);
+            right.TryGetFeatureValue(CommonUsages.triggerButton, out rightPressed);
+            yield return null;
+        }
+    }
+
+    private void SetImageForTrial(StroopData data, bool isNegative)
+    {
+        data.isNegative = isNegative;
+        if (isNegative)
+        {
+            iconImage.sprite = negativeImageList[Random.Range(0, negativeImageList.Count)];
+        }
+        else
+        {
+            iconImage.sprite = neutralImageList[Random.Range(0, neutralImageList.Count)];
+        }
+    }
+
+    private GameObject InstantiateTrialPrefab(StroopType type)
+    {
+        return type switch
+        {
+            StroopType.Congruent => Instantiate(congruentPrefab),
+            StroopType.Incongruent => Instantiate(incongruentPrefab),
+            StroopType.StarsArray => Instantiate(starsArrayPrefab),
+            _ => null
+        };
+    }
+
+    private void ShowFinalResult()
+    {
+        int total = currentTrialList.Count;
+        int correct = currentTrialList.Count(d => d.isCorrect);
+        float accuracy = (float)correct / total * 100f;
+        float avgTime = currentTrialList.Where(d => d.isCorrect).Select(d => d.responseTime).DefaultIfEmpty(0).Average();
+
+        Debug.Log("🎉 實驗完成！");
+        Debug.Log($"🎯 正確率：{correct}/{total}（{accuracy:F2}%）");
+        Debug.Log($"⏱ 平均反應時間：{avgTime:F2} 秒");
+    }
+
+    public static void Shuffle<T>(List<T> list)
+    {
+        int n = list.Count;
+        for (int i = 0; i < n - 1; i++)
+        {
+            int j = Random.Range(i, n);
+            (list[i], list[j]) = (list[j], list[i]);
+        }
+    }
+    
+    public int triggerNumber = -1;
+
+    public void SetTriggerNumber(int i)
+    {
+        triggerNumber = i;
+    }
+    
 }
 
 public enum StroopType
 {
-    Congruent, // 題型1
-    Incongruent, // 題型2
-    StarsArray  // 題型3
+    Congruent,
+    Incongruent,
+    StarsArray
 }
 
 [System.Serializable]
 public class StroopData
 {
-    public StroopType type; // 題型
-    public bool isCorrect; // 是否正確
-    public float responseTime; // 回應時間
+    public StroopType type;
+    public bool isCorrect;
+    public bool isNegative;
+    public float responseTime;
 }

@@ -47,6 +47,13 @@ public class EmotionalFlankerTaskSystem : MonoBehaviour
             middleLetter.text = data.currentLetter;
             upperLetter.text = data.currentLetter;
             bottomLetter.text = data.currentLetter;
+
+            yield return new WaitForSeconds(0.5f);
+            
+            // 清空畫面
+            middleLetter.text = "";
+            upperLetter.text = "";
+            bottomLetter.text = "";
             
             // 設定反應時間上限
             float responseTime = responseTimeLimit[Random.Range(0, responseTimeLimit.Length)];
@@ -73,11 +80,6 @@ public class EmotionalFlankerTaskSystem : MonoBehaviour
                 
                 yield return null; // 等待下一幀
             }
-            
-            // 清空畫面
-            middleLetter.text = "";
-            upperLetter.text = "";
-            bottomLetter.text = "";
             
             middleLetter.color = Color.white;
         }
