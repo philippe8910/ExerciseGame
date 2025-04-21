@@ -8,28 +8,29 @@ using Random = UnityEngine.Random;
 
 public class EmotionalFlankerTaskSystem : MonoBehaviour
 {
+    [Header("Flanker 設定")]
     [SerializeField]
     public EmotionalFlankerTaskDataHolder currentTaskData;
-    
+
     public List<FlankerTaskData> currentData = new List<FlankerTaskData>();
 
     public TMP_Text middleLetter;
     public TMP_Text upperLetter, bottomLetter;
 
     public Color redColor = Color.red, greenColor = Color.green;
-
-    // 試次間隔時間 (清空畫面後的等待)
     public float timeBetweenTrials = 1.0f;
-    // 每個試次允許作答的時間 (反應時間上限)
     public float[] responseTimeLimit;
-    
+
+    [Header("旗子參考")]
+    public FlagComponent leftFlag;   // 對應紅色回答
+    public FlagComponent rightFlag;  // 對應綠色回答
 
     private void Start()
     {
         Init();
         StartCoroutine(StartTask());
     }
-    
+
     private IEnumerator StartTask()
     {
         foreach (var data in currentData)
@@ -43,51 +44,65 @@ public class EmotionalFlankerTaskSystem : MonoBehaviour
             middleLetter.color = data.midColor;
             upperLetter.color = data.OtherColor;
             bottomLetter.color = data.OtherColor;
-            
+
             middleLetter.text = data.currentLetter;
             upperLetter.text = data.currentLetter;
             bottomLetter.text = data.currentLetter;
 
             yield return new WaitForSeconds(0.5f);
-            
-            // 清空畫面
+
             middleLetter.text = "";
             upperLetter.text = "";
             bottomLetter.text = "";
-            
-            // 設定反應時間上限
+
             float responseTime = responseTimeLimit[Random.Range(0, responseTimeLimit.Length)];
-            
-            // 等待玩家回應
             float startTime = Time.time;
-            
+
+            bool responded = false;
+
             while (Time.time - startTime < responseTime)
             {
-                // 檢查玩家是否有回應
-                if (Input.GetKeyDown(KeyCode.RightArrow) && middleLetter.color == Color.green) // 假設空白鍵為回應鍵
+                bool leftUp = leftFlag != null && leftFlag.isAbove;
+                bool rightUp = rightFlag != null && rightFlag.isAbove;
+
+                if (leftUp && rightUp)
+                {
+                    data.responseTime = Time.time - startTime;
+                    data.isCorrect = false; // 雙手舉起 = 錯誤
+                    responded = true;
+                    break;
+                }
+
+                if (rightUp && !leftUp && middleLetter.color == Color.green)
                 {
                     data.responseTime = Time.time - startTime;
                     data.isCorrect = true;
+                    responded = true;
                     break;
                 }
-                
-                if (Input.GetKeyDown(KeyCode.LeftArrow) && middleLetter.color == Color.red) // 假設空白鍵為回應鍵
+
+                if (leftUp && !rightUp && middleLetter.color == Color.red)
                 {
                     data.responseTime = Time.time - startTime;
                     data.isCorrect = true;
+                    responded = true;
                     break;
                 }
-                
-                yield return null; // 等待下一幀
+
+                yield return null;
             }
-            
+
+            if (!responded)
+            {
+                data.isCorrect = false;
+                data.responseTime = responseTime;
+            }
+
             middleLetter.color = Color.white;
         }
-        
+
         int totalCount = currentData.Count;
         int correctCount = currentData.Count(d => d.isCorrect);
-
-// 防止除以零錯誤
         float accuracy = totalCount > 0 ? (float)correctCount / totalCount * 100f : 0f;
         float averageResponseTime = currentData.Where(d => d.isCorrect).Any()
             ? currentData.Where(d => d.isCorrect).Average(d => d.responseTime)
@@ -95,14 +110,12 @@ public class EmotionalFlankerTaskSystem : MonoBehaviour
 
         Debug.Log($"✅ 正確率: {correctCount}/{totalCount} ({accuracy:F2}%)");
         Debug.Log($"⏱️ 平均反應時間（正確題）: {averageResponseTime:F2} 秒");
-
     }
-    
+
     private void ShuffleList<T>(List<T> list)
     {
         for (int i = 0; i < list.Count; i++)
         {
-            // 在區間 [i, list.Count) 中取得隨機索引
             int randomIndex = Random.Range(i, list.Count);
             (list[i], list[randomIndex]) = (list[randomIndex], list[i]);
         }
@@ -112,20 +125,9 @@ public class EmotionalFlankerTaskSystem : MonoBehaviour
     {
         currentData.Clear();
 
-        var negativeLatter = currentTaskData.negativeLatter;
-        var neutralLatter = currentTaskData.neutralLatter;
+        var negativeLatter = currentTaskData.negativeLatter.Take(30).ToList();
+        var neutralLatter = currentTaskData.neutralLatter.Take(30).ToList();
 
-        negativeLatter = negativeLatter.Take(30).ToList();
-        neutralLatter = neutralLatter.Take(30).ToList();
-        
-        Debug.Log("負向詞彙數量: " + currentTaskData.negativeLatter.Count);
-        Debug.Log("中性詞彙數量: " + currentTaskData.neutralLatter.Count);
-
-        
-        Debug.Log("負向詞彙數量: " + negativeLatter.Count);
-        Debug.Log("中性詞彙數量: " + neutralLatter.Count);
-
-        // 定義所有要組合的配色組合
         (Color mid, Color other)[] colorCombos = new (Color, Color)[]
         {
             (Color.red, Color.red),
@@ -134,7 +136,6 @@ public class EmotionalFlankerTaskSystem : MonoBehaviour
             (Color.green, Color.green)
         };
 
-        // 負向詞處理
         foreach (var word in negativeLatter)
         {
             foreach (var (midColor, otherColor) in colorCombos)
@@ -149,7 +150,6 @@ public class EmotionalFlankerTaskSystem : MonoBehaviour
             }
         }
 
-        // 中性詞處理
         foreach (var word in neutralLatter)
         {
             foreach (var (midColor, otherColor) in colorCombos)
@@ -164,10 +164,8 @@ public class EmotionalFlankerTaskSystem : MonoBehaviour
             }
         }
 
-        // 隨機打亂資料
         ShuffleList(currentData);
     }
-
 }
 
 [System.Serializable]
@@ -182,7 +180,7 @@ public class EmotionalFlankerTaskDataHolder : ScriptableObject
 public class FlankerTaskData
 {
     public string currentLetter;
-    public Color midColor , OtherColor;
+    public Color midColor, OtherColor;
     public bool isNegative;
     public bool isCorrect;
     public float responseTime;

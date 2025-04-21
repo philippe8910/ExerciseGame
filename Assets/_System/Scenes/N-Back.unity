@@ -1582,11 +1582,14 @@ MonoBehaviour:
   visualAllSprites: []
   visualKey: 32
   audioKey: 122
+  restPanel: {fileID: 0}
   visualIDList: 
   audioIDList: 
   visualResponseList: 
   audioResponseList: 
   trialResults: []
+  isVisualCheck: 0
+  isAudioCheck: 0
 --- !u!1 &702679993
 GameObject:
   m_ObjectHideFlags: 0
@@ -3294,7 +3297,19 @@ MonoBehaviour:
     m_Bits: 0
   onCollisionEnter:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 680355568}
+        m_TargetAssemblyTypeName: NBackGame, Assembly-CSharp
+        m_MethodName: SetVisualCheck
+        m_Mode: 6
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 1
+        m_CallState: 2
   onCollisionStay:
     m_PersistentCalls:
       m_Calls: []
@@ -3344,6 +3359,7 @@ GameObject:
   - component: {fileID: 1435656329}
   - component: {fileID: 1435656328}
   - component: {fileID: 1435656327}
+  - component: {fileID: 1435656331}
   m_Layer: 0
   m_Name: Cube (1)
   m_TagString: Untagged
@@ -3437,6 +3453,44 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 6
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1435656331
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1435656326}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1d5aea2a835fe4f2eb7ee1153702bd7d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  filterMode: 0
+  targetTag: 
+  targetLayer:
+    serializedVersion: 2
+    m_Bits: 0
+  onCollisionEnter:
+    m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 680355568}
+        m_TargetAssemblyTypeName: NBackGame, Assembly-CSharp
+        m_MethodName: SetAudioCheck
+        m_Mode: 6
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 1
+        m_CallState: 2
+  onCollisionStay:
+    m_PersistentCalls:
+      m_Calls: []
+  onCollisionExit:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!1 &1472227843
 GameObject:
   m_ObjectHideFlags: 0

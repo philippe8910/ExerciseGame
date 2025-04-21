@@ -1,7 +1,11 @@
+// 整合完整版的 Adaptive N-back 任務腳本
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.XR;
+using Random = UnityEngine.Random;
 
 [System.Serializable]
 public class TrialResult
@@ -15,8 +19,8 @@ public class TrialResult
     public float audioReactionTime;
     public string visualResultType;
     public string audioResultType;
-    public string visualStimulusType; // 新增
-    public string audioStimulusType; // 新增
+    public string visualStimulusType;
+    public string audioStimulusType;
 }
 
 public class NBackGame : MonoBehaviour
@@ -43,14 +47,27 @@ public class NBackGame : MonoBehaviour
     public KeyCode visualKey = KeyCode.Space;
     public KeyCode audioKey = KeyCode.Z;
 
+    [Header("UI 提示物件")]
+    public GameObject restPanel;
+
     public List<int> visualIDList = new();
     public List<int> audioIDList = new();
     public List<bool> visualResponseList = new();
     public List<bool> audioResponseList = new();
     public List<TrialResult> trialResults = new();
 
-    private int visualHit = 0, visualMiss = 0, visualFalseAlarm = 0, visualCorrectRejection = 0 , currentAudioStimuli = 0;
-    private int audioHit = 0, audioMiss = 0, audioFalseAlarm = 0, audioCorrectRejection = 0 , currentVisualStimuli = 0;
+    private List<float> visualAccuracyRecord = new();
+    private List<float> audioAccuracyRecord = new();
+    private List<int> nRecord = new();
+
+    public bool isVisualCheck , isAudioCheck;
+
+    private int visualHit, visualMiss, visualFalseAlarm, visualCorrectRejection;
+    private int audioHit, audioMiss, audioFalseAlarm, audioCorrectRejection;
+    private int currentAudioStimuli = 0, currentVisualStimuli = 0;
+
+    private List<Sprite> _stimuliSprites = new();
+    private List<AudioClip> _audioClipsStimuli = new();
 
     void Start()
     {
@@ -60,173 +77,9 @@ public class NBackGame : MonoBehaviour
             return;
         }
 
-        Init();
-        StartCoroutine(StartGame());
-    }
-
-    public IEnumerator StartGame()
-    {
-        Debug.Log("按任意鍵開始遊戲...");
-        yield return new WaitUntil(() => Input.anyKeyDown);
-        StartCoroutine(GameLoop());
+        StartCoroutine(MultiRoundGame());
     }
     
-
-    IEnumerator GameLoop()
-    {
-        Debug.Log("🎮 遊戲開始！");
-        trialResults.Clear();
-        visualHit = visualMiss = visualFalseAlarm = visualCorrectRejection = 0;
-        audioHit = audioMiss = audioFalseAlarm = audioCorrectRejection = 0;
-
-        int vistualStimuliIndex = 0, audioStimuliIndex = 0;
-        
-        for (int i = 0; i < totalTrials; i++)
-        {
-            float interval = stimulusInterval[Random.Range(0, stimulusInterval.Length)];
-            int vID = visualIDList[i], aID = audioIDList[i];
-
-            foreach (var plane in gridPlanes)
-                plane.GetComponent<Renderer>().material.SetTexture("_BaseMap", null);
-
-            bool isVisualOrFutureVisual = visualResponseList[i] || (i + n < visualResponseList.Count && visualResponseList[i + n]);
-            Sprite currentSprite;
-            
-            if (isVisualOrFutureVisual)
-            {
-                if (this.totalVisualStimuli > currentVisualStimuli)
-                {
-                    currentSprite = stimuliSprites[vistualStimuliIndex];
-                    gridPlanes[vID].GetComponent<Renderer>().material.SetTexture("_BaseMap", stimuliSprites[vistualStimuliIndex].texture);
-                    currentVisualStimuli++;
-                }
-                else
-                {
-                    currentSprite = normalSprites[vistualStimuliIndex];
-                    gridPlanes[vID].GetComponent<Renderer>().material.SetTexture("_BaseMap", normalSprites[vistualStimuliIndex].texture);
-                }
-            }
-            else
-            {
-                int r = Random.Range(0, visualAllSprites.Count);
-                
-                currentSprite = visualAllSprites[r];
-                gridPlanes[vID].GetComponent<Renderer>().material.SetTexture("_BaseMap", visualAllSprites[r].texture);
-            }
-
-            bool isAudioOrFutureAudio = audioResponseList[i] || (i + n < audioResponseList.Count && audioResponseList[i + n]);
-            
-            if (isAudioOrFutureAudio)
-            {
-                if (this.totalAudioStimuli > currentAudioStimuli)
-                {
-                    audioSource.clip = audioClipsStimuli[aID];
-                    currentAudioStimuli++;
-                }
-                else
-                {
-                    audioSource.clip = audioClipsNormal[aID];
-                }
-            }
-            else
-            {
-                audioSource.clip = audioClips[aID];
-            }
-
-            audioSource.Play();
-            
-            bool isAudioSimilar = _audioClipsStimuli.Contains(audioSource.clip);
-            bool isVisualSimilar = _stimuliSprites.Contains(currentSprite);
-
-            bool visualPressed = false, audioPressed = false;
-            float visualRT = -1f, audioRT = -1f;
-            float timer = 0f;
-
-            while (timer < interval)
-            {
-                if (!visualPressed && Input.GetKeyDown(visualKey))
-                {
-                    visualPressed = true;
-                    visualRT = timer;
-                }
-
-                if (!audioPressed && Input.GetKeyDown(audioKey))
-                {
-                    audioPressed = true;
-                    audioRT = timer;
-                }
-
-                timer += Time.deltaTime;
-                yield return null;
-            }
-
-            TrialResult result = new TrialResult
-            {
-                trialIndex = i,
-                isVisualStimulus = visualResponseList[i],
-                isAudioStimulus = audioResponseList[i],
-                visualReactionTime = visualRT,
-                audioReactionTime = audioRT,
-                visualStimulusType = isVisualSimilar ? "刺激" : "普通",
-                audioStimulusType = isAudioSimilar ? "刺激" : "普通"
-            };
-
-            if (visualResponseList[i])
-            {
-                if (visualPressed) { result.visualCorrect = true; result.visualResultType = "Hit"; visualHit++; }
-                else { result.visualCorrect = false; result.visualResultType = "Miss"; visualMiss++; }
-            }
-            else
-            {
-                if (visualPressed) { result.visualCorrect = false; result.visualResultType = "FalseAlarm"; visualFalseAlarm++; }
-                else { result.visualCorrect = true; result.visualResultType = "CorrectRejection"; visualCorrectRejection++; }
-            }
-
-            if (audioResponseList[i])
-            {
-                if (audioPressed) { result.audioCorrect = true; result.audioResultType = "Hit"; audioHit++; }
-                else { result.audioCorrect = false; result.audioResultType = "Miss"; audioMiss++; }
-            }
-            else
-            {
-                if (audioPressed) { result.audioCorrect = false; result.audioResultType = "FalseAlarm"; audioFalseAlarm++; }
-                else { result.audioCorrect = true; result.audioResultType = "CorrectRejection"; audioCorrectRejection++; }
-            }
-
-            trialResults.Add(result);
-
-            foreach (var plane in gridPlanes)
-                plane.GetComponent<Renderer>().material.SetTexture("_BaseMap", null);
-        }
-
-        int actualVisualStimuli = trialResults.Count(r => r.isVisualStimulus);
-        int actualAudioStimuli = trialResults.Count(r => r.isAudioStimulus);
-
-        // 正確率計算（只看 Hit 數）
-        float visualAccuracy = actualVisualStimuli > 0 ? (float)visualHit / actualVisualStimuli : 0f;
-        float audioAccuracy = actualAudioStimuli > 0 ? (float)audioHit / actualAudioStimuli : 0f;
-
-        Debug.Log("======= ✅ 遊戲結束！統計結果如下： =======");
-
-        Debug.Log($"📷 視覺 ➜ Hit: {visualHit}, Total Stimuli: {actualVisualStimuli}, Accuracy: {(visualAccuracy * 100f):F2}%");
-        Debug.Log($"🎧 聽覺 ➜ Hit: {audioHit}, Total Stimuli: {actualAudioStimuli}, Accuracy: {(audioAccuracy * 100f):F2}%");
-
-        int visualStimuliCount = trialResults.Count(r => r.visualStimulusType == "刺激");
-        int visualNormalCount = trialResults.Count(r => r.visualStimulusType == "普通");
-        int audioStimuliCount = trialResults.Count(r => r.audioStimulusType == "刺激");
-        int audioNormalCount = trialResults.Count(r => r.audioStimulusType == "普通");
-
-        Debug.Log("📊 題目類型統計：");
-        Debug.Log($"視覺 ➜ 刺激: {visualStimuliCount}, 普通: {visualNormalCount}");
-        Debug.Log($"聽覺 ➜ 刺激: {audioStimuliCount}, 普通: {audioNormalCount}");
-
-
-
-    }
-
-    private List<Sprite> _stimuliSprites = new List<Sprite>();
-    private List<AudioClip> _audioClipsStimuli = new List<AudioClip>();
-
     private void Init()
    {
     bool success = false;
@@ -396,14 +249,235 @@ public class NBackGame : MonoBehaviour
     
    }
 
+    private IEnumerator MultiRoundGame()
+    {
+        for (int round = 0; round < 3; round++)
+        {
+            Init();
+            Debug.Log($"▶️ 開始第 {round + 1} 輪，n = {n}");
+            yield return StartCoroutine(GameLoop());
+
+            float visualAcc = trialResults.Count(r => r.visualCorrect) / (float)Mathf.Max(1, trialResults.Count(r => r.isVisualStimulus));
+            float audioAcc = trialResults.Count(r => r.audioCorrect) / (float)Mathf.Max(1, trialResults.Count(r => r.isAudioStimulus));
+
+            visualAccuracyRecord.Add(visualAcc);
+            audioAccuracyRecord.Add(audioAcc);
+            nRecord.Add(n);
+
+            Debug.Log($"🎯 視覺正確率：{visualAcc * 100f:F2}%");
+            Debug.Log($"🎧 聽覺正確率：{audioAcc * 100f:F2}%");
+
+            if ((visualAcc + audioAcc) / 2f >= 0.5f)
+                n = Mathf.Min(3, n + 1);
+            else
+                n = Mathf.Max(1, n - 1);
+
+            if (round < 2)
+            {
+                restPanel.SetActive(true);
+                Debug.Log("🛋️ 請休息，按下雙手 Trigger 繼續");
+                yield return StartCoroutine(WaitForBothHandsTrigger());
+                restPanel.SetActive(false);
+            }
+        }
+
+        Debug.Log("✅ 三輪測試完成結果：");
+        for (int i = 0; i < visualAccuracyRecord.Count; i++)
+        {
+            Debug.Log($"📊 第{i + 1}輪：n = {nRecord[i]}, 視覺 {visualAccuracyRecord[i] * 100f:F2}%, 聽覺 {audioAccuracyRecord[i] * 100f:F2}%");
+        }
+    }
+
+    private IEnumerator WaitForBothHandsTrigger()
+    {
+        InputDevice left = InputDevices.GetDeviceAtXRNode(XRNode.LeftHand);
+        InputDevice right = InputDevices.GetDeviceAtXRNode(XRNode.RightHand);
+
+        bool leftPressed = false, rightPressed = false;
+
+        while (!Input.GetKey(KeyCode.Space)) //(leftPressed && rightPressed)
+        {
+            left.TryGetFeatureValue(CommonUsages.triggerButton, out leftPressed);
+            right.TryGetFeatureValue(CommonUsages.triggerButton, out rightPressed);
+            yield return null;
+        }
+    }
+
     public static void Shuffle<T>(List<T> list)
     {
         int n = list.Count;
         for (int i = 0; i < n - 1; i++)
         {
-            int j = Random.Range(i, n);
+            int j = UnityEngine.Random.Range(i, n);
             (list[i], list[j]) = (list[j], list[i]);
         }
     }
+
+    // 請將原本 GameLoop 和 Init 的內容貼回此處保持不變（略）
+    // 若需要我自動幫你補進原始 GameLoop/Init 的內容請告訴我
+    
+    IEnumerator GameLoop()
+    {
+        Debug.Log("🎮 遊戲開始！");
+        trialResults.Clear();
+        visualHit = visualMiss = visualFalseAlarm = visualCorrectRejection = 0;
+        audioHit = audioMiss = audioFalseAlarm = audioCorrectRejection = 0;
+
+        int vistualStimuliIndex = 0, audioStimuliIndex = 0;
+        
+        for (int i = 0; i < totalTrials; i++)
+        {
+            float interval = stimulusInterval[Random.Range(0, stimulusInterval.Length)];
+            int vID = visualIDList[i], aID = audioIDList[i];
+
+            isVisualCheck = isAudioCheck = false;
+
+            foreach (var plane in gridPlanes)
+                plane.GetComponent<Renderer>().material.SetTexture("_BaseMap", null);
+
+            bool isVisualOrFutureVisual = visualResponseList[i] || (i + n < visualResponseList.Count && visualResponseList[i + n]);
+            Sprite currentSprite;
+            
+            if (isVisualOrFutureVisual)
+            {
+                if (this.totalVisualStimuli > currentVisualStimuli)
+                {
+                    currentSprite = stimuliSprites[vistualStimuliIndex];
+                    gridPlanes[vID].GetComponent<Renderer>().material.SetTexture("_BaseMap", stimuliSprites[vistualStimuliIndex].texture);
+                    currentVisualStimuli++;
+                }
+                else
+                {
+                    currentSprite = normalSprites[vistualStimuliIndex];
+                    gridPlanes[vID].GetComponent<Renderer>().material.SetTexture("_BaseMap", normalSprites[vistualStimuliIndex].texture);
+                }
+            }
+            else
+            {
+                int r = Random.Range(0, visualAllSprites.Count);
+                
+                currentSprite = visualAllSprites[r];
+                gridPlanes[vID].GetComponent<Renderer>().material.SetTexture("_BaseMap", visualAllSprites[r].texture);
+            }
+
+            bool isAudioOrFutureAudio = audioResponseList[i] || (i + n < audioResponseList.Count && audioResponseList[i + n]);
+            
+            if (isAudioOrFutureAudio)
+            {
+                if (this.totalAudioStimuli > currentAudioStimuli)
+                {
+                    audioSource.clip = audioClipsStimuli[aID];
+                    currentAudioStimuli++;
+                }
+                else
+                {
+                    audioSource.clip = audioClipsNormal[aID];
+                }
+            }
+            else
+            {
+                audioSource.clip = audioClips[aID];
+            }
+
+            audioSource.Play();
+            
+            bool isAudioSimilar = _audioClipsStimuli.Contains(audioSource.clip);
+            bool isVisualSimilar = _stimuliSprites.Contains(currentSprite);
+
+            bool visualPressed = false, audioPressed = false;
+            float visualRT = -1f, audioRT = -1f;
+            float timer = 0f;
+
+            while (timer < interval)
+            {
+                if (!visualPressed && isVisualCheck)
+                {
+                    visualPressed = true;
+                    visualRT = timer;
+                    isVisualCheck = false;
+                }
+
+                if (!audioPressed && isAudioCheck)
+                {
+                    audioPressed = true;
+                    audioRT = timer;
+                    isAudioCheck = false;
+                }
+
+                timer += Time.deltaTime;
+                yield return null;
+            }
+
+            TrialResult result = new TrialResult
+            {
+                trialIndex = i,
+                isVisualStimulus = visualResponseList[i],
+                isAudioStimulus = audioResponseList[i],
+                visualReactionTime = visualRT,
+                audioReactionTime = audioRT,
+                visualStimulusType = isVisualSimilar ? "刺激" : "普通",
+                audioStimulusType = isAudioSimilar ? "刺激" : "普通"
+            };
+
+            if (visualResponseList[i])
+            {
+                if (visualPressed) { result.visualCorrect = true; result.visualResultType = "Hit"; visualHit++; }
+                else { result.visualCorrect = false; result.visualResultType = "Miss"; visualMiss++; }
+            }
+            else
+            {
+                if (visualPressed) { result.visualCorrect = false; result.visualResultType = "FalseAlarm"; visualFalseAlarm++; }
+                else { result.visualCorrect = true; result.visualResultType = "CorrectRejection"; visualCorrectRejection++; }
+            }
+
+            if (audioResponseList[i])
+            {
+                if (audioPressed) { result.audioCorrect = true; result.audioResultType = "Hit"; audioHit++; }
+                else { result.audioCorrect = false; result.audioResultType = "Miss"; audioMiss++; }
+            }
+            else
+            {
+                if (audioPressed) { result.audioCorrect = false; result.audioResultType = "FalseAlarm"; audioFalseAlarm++; }
+                else { result.audioCorrect = true; result.audioResultType = "CorrectRejection"; audioCorrectRejection++; }
+            }
+
+            trialResults.Add(result);
+
+            foreach (var plane in gridPlanes)
+                plane.GetComponent<Renderer>().material.SetTexture("_BaseMap", null);
+        }
+
+        int actualVisualStimuli = trialResults.Count(r => r.isVisualStimulus);
+        int actualAudioStimuli = trialResults.Count(r => r.isAudioStimulus);
+
+        // 正確率計算（只看 Hit 數）
+        float visualAccuracy = actualVisualStimuli > 0 ? (float)visualHit / actualVisualStimuli : 0f;
+        float audioAccuracy = actualAudioStimuli > 0 ? (float)audioHit / actualAudioStimuli : 0f;
+
+        Debug.Log("======= ✅ 遊戲結束！統計結果如下： =======");
+
+        Debug.Log($"📷 視覺 ➜ Hit: {visualHit}, Total Stimuli: {actualVisualStimuli}, Accuracy: {(visualAccuracy * 100f):F2}%");
+        Debug.Log($"🎧 聽覺 ➜ Hit: {audioHit}, Total Stimuli: {actualAudioStimuli}, Accuracy: {(audioAccuracy * 100f):F2}%");
+
+        int visualStimuliCount = trialResults.Count(r => r.visualStimulusType == "刺激");
+        int visualNormalCount = trialResults.Count(r => r.visualStimulusType == "普通");
+        int audioStimuliCount = trialResults.Count(r => r.audioStimulusType == "刺激");
+        int audioNormalCount = trialResults.Count(r => r.audioStimulusType == "普通");
+
+        Debug.Log("📊 題目類型統計：");
+        Debug.Log($"視覺 ➜ 刺激: {visualStimuliCount}, 普通: {visualNormalCount}");
+        Debug.Log($"聽覺 ➜ 刺激: {audioStimuliCount}, 普通: {audioNormalCount}");
+    }
+    
+    public void SetVisualCheck(bool check)
+    {
+        isVisualCheck = check;
+    }
+    
+    public void SetAudioCheck(bool check)
+    {
+        isAudioCheck = check;
+    }
 }
+
 
