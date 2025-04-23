@@ -251,14 +251,20 @@ public class NBackGame : MonoBehaviour
 
     private IEnumerator MultiRoundGame()
     {
+        Init();
+
         for (int round = 0; round < 3; round++)
         {
-            Init();
             Debug.Log($"▶️ 開始第 {round + 1} 輪，n = {n}");
             yield return StartCoroutine(GameLoop());
 
-            float visualAcc = trialResults.Count(r => r.visualCorrect) / (float)Mathf.Max(1, trialResults.Count(r => r.isVisualStimulus));
-            float audioAcc = trialResults.Count(r => r.audioCorrect) / (float)Mathf.Max(1, trialResults.Count(r => r.isAudioStimulus));
+            float visualStimuli = trialResults.Count(r => r.isVisualStimulus);
+            float audioStimuli = trialResults.Count(r => r.isAudioStimulus);
+            float visualHitCount = trialResults.Count(r => r.isVisualStimulus && r.visualCorrect);
+            float audioHitCount = trialResults.Count(r => r.isAudioStimulus && r.audioCorrect);
+
+            float visualAcc = visualStimuli > 0 ? visualHitCount / visualStimuli : 0f;
+            float audioAcc = audioStimuli > 0 ? audioHitCount / audioStimuli : 0f;
 
             visualAccuracyRecord.Add(visualAcc);
             audioAccuracyRecord.Add(audioAcc);
@@ -312,9 +318,6 @@ public class NBackGame : MonoBehaviour
             (list[i], list[j]) = (list[j], list[i]);
         }
     }
-
-    // 請將原本 GameLoop 和 Init 的內容貼回此處保持不變（略）
-    // 若需要我自動幫你補進原始 GameLoop/Init 的內容請告訴我
     
     IEnumerator GameLoop()
     {
