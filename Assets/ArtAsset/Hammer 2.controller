@@ -1,17 +1,17 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1102 &-6825886135232419494
+--- !u!1102 &-7434102742455409244
 AnimatorState:
   serializedVersion: 6
   m_ObjectHideFlags: 1
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: button press
+  m_Name: Hit
   m_Speed: 1
   m_CycleOffset: 0
   m_Transitions:
-  - {fileID: 1318608487722650899}
+  - {fileID: 1564630387762344256}
   m_StateMachineBehaviours: []
   m_Position: {x: 50, y: 50, z: 0}
   m_IKOnFeet: 0
@@ -21,13 +21,13 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: 7400000, guid: 70154d3d9fcfbd7419cd33dbbb933a0e, type: 2}
+  m_Motion: {fileID: 7400000, guid: 20b21430b0bec4748a5927dab4a0eecf, type: 2}
   m_Tag: 
   m_SpeedParameter: 
   m_MirrorParameter: 
   m_CycleOffsetParameter: 
   m_TimeParameter: 
---- !u!1107 &-4240817729303357912
+--- !u!1107 &-4014491196274838196
 AnimatorStateMachine:
   serializedVersion: 6
   m_ObjectHideFlags: 1
@@ -37,11 +37,11 @@ AnimatorStateMachine:
   m_Name: Base Layer
   m_ChildStates:
   - serializedVersion: 1
-    m_State: {fileID: -6825886135232419494}
-    m_Position: {x: 350, y: 30, z: 0}
+    m_State: {fileID: -7434102742455409244}
+    m_Position: {x: 310, y: 0, z: 0}
   - serializedVersion: 1
-    m_State: {fileID: 1840686051476881933}
-    m_Position: {x: 356.97894, y: 195.80307, z: 0}
+    m_State: {fileID: 7141350687159492697}
+    m_Position: {x: 329.7323, y: 143.8002, z: 0}
   m_ChildStateMachines: []
   m_AnyStateTransitions: []
   m_EntryTransitions: []
@@ -51,20 +51,20 @@ AnimatorStateMachine:
   m_EntryPosition: {x: 50, y: 120, z: 0}
   m_ExitPosition: {x: 800, y: 120, z: 0}
   m_ParentStateMachinePosition: {x: 800, y: 20, z: 0}
-  m_DefaultState: {fileID: 1840686051476881933}
+  m_DefaultState: {fileID: 7141350687159492697}
 --- !u!91 &9100000
 AnimatorController:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: 5
+  m_Name: Hammer 2
   serializedVersion: 5
   m_AnimatorParameters: []
   m_AnimatorLayers:
   - serializedVersion: 5
     m_Name: Base Layer
-    m_StateMachine: {fileID: -4240817729303357912}
+    m_StateMachine: {fileID: -4014491196274838196}
     m_Mask: {fileID: 0}
     m_Motions: []
     m_Behaviours: []
@@ -74,7 +74,7 @@ AnimatorController:
     m_IKPass: 0
     m_SyncedLayerAffectsTiming: 0
     m_Controller: {fileID: 9100000}
---- !u!1101 &1318608487722650899
+--- !u!1101 &1564630387762344256
 AnimatorStateTransition:
   m_ObjectHideFlags: 1
   m_CorrespondingSourceObject: {fileID: 0}
@@ -83,20 +83,20 @@ AnimatorStateTransition:
   m_Name: 
   m_Conditions: []
   m_DstStateMachine: {fileID: 0}
-  m_DstState: {fileID: 1840686051476881933}
+  m_DstState: {fileID: 7141350687159492697}
   m_Solo: 0
   m_Mute: 0
   m_IsExit: 0
   serializedVersion: 3
   m_TransitionDuration: 0.25
   m_TransitionOffset: 0
-  m_ExitTime: 0.25
+  m_ExitTime: 0
   m_HasExitTime: 1
   m_HasFixedDuration: 1
   m_InterruptionSource: 0
   m_OrderedInterruption: 1
   m_CanTransitionToSelf: 1
---- !u!1102 &1840686051476881933
+--- !u!1102 &7141350687159492697
 AnimatorState:
   serializedVersion: 6
   m_ObjectHideFlags: 1
