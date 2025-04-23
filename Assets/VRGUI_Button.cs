@@ -1,103 +1,89 @@
+using Sirenix.OdinInspector;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.XR;
 
 public class VRGUI_Button : MonoBehaviour
 {
-    public Animator animator;
-    public UnityEvent onButtonTrigger;
-    public UnityEvent onButtonRelease;
-
-    public int num;
-
-    private bool isPlayerInside = false;
-    private Transform currentPlayer;
-    private InputDevice device;
-
-    private bool wasGrabbing = false;
-
-    private void Start()
+    public enum FilterMode
     {
-        device = InputDevices.GetDeviceAtXRNode(XRNode.RightHand); // 可改為 LeftHand
-        
-        onButtonTrigger.AddListener(delegate
-        {
-            FindObjectOfType<EmotionalStroopCore>().SetTriggerNumber(num);
-        });
-        
-        onButtonRelease.AddListener(delegate
-        {
-            FindObjectOfType<EmotionalStroopCore>().SetTriggerNumber(-1);
-        });
+        None,        // 不過濾 (所有碰撞都觸發)
+        Tag,         // 只過濾 Tag
+        Layer,       // 只過濾 Layer
+        TagAndLayer  // 同時過濾 Tag 和 Layer
     }
 
-    private void Update()
+    public float num;
+
+    [BoxGroup("碰撞過濾設定")]
+    [LabelText("碰撞過濾模式")]
+    public FilterMode filterMode = FilterMode.None;
+
+    [BoxGroup("碰撞過濾設定")]
+    [ShowIf("@filterMode == FilterMode.Tag || filterMode == FilterMode.TagAndLayer")]
+    [ValueDropdown("@UnityEditorInternal.InternalEditorUtility.tags")]
+    [LabelText("目標 Tag")]
+    public string targetTag = "";
+
+    [BoxGroup("碰撞過濾設定")]
+    [ShowIf("@filterMode == FilterMode.Layer || filterMode == FilterMode.TagAndLayer")]
+    [LabelText("目標 Layer")]
+    public LayerMask targetLayer;
+
+    [FoldoutGroup("事件回調")]
+    [LabelText("碰撞開始時觸發")]
+    public UnityEvent onCollisionEnter;
+
+    [FoldoutGroup("事件回調")]
+    [LabelText("碰撞持續時觸發")]
+    public UnityEvent onCollisionStay;
+
+    [FoldoutGroup("事件回調")]
+    [LabelText("碰撞結束時觸發")]
+    public UnityEvent onCollisionExit;
+
+    private bool IsCollisionValid(GameObject obj)
     {
-        if (!isPlayerInside || currentPlayer == null) return;
-        if (!VRButtonProximityManager.Instance.IsClosest(currentPlayer, this)) return;
-
-        if (!device.isValid)
+        switch (filterMode)
         {
-            device = InputDevices.GetDeviceAtXRNode(XRNode.RightHand);
-            return;
-        }
+            case FilterMode.None:
+                return true; // 不過濾，所有碰撞都觸發
 
-        bool isGrabbing = false;
-        device.TryGetFeatureValue(CommonUsages.gripButton, out isGrabbing);
+            case FilterMode.Tag:
+                return obj.CompareTag(targetTag);
 
-        if (isGrabbing && !wasGrabbing)
-        {
-            onButtonTrigger?.Invoke();
-            SendHaptic(0.7f, 0.2f); // 👉 按下震動：強
-        }
-        else if (!isGrabbing && wasGrabbing)
-        {
-            onButtonRelease?.Invoke();
-        }
+            case FilterMode.Layer:
+                return ((1 << obj.layer) & targetLayer) != 0;
 
-        wasGrabbing = isGrabbing;
-    }
+            case FilterMode.TagAndLayer:
+                return obj.CompareTag(targetTag) && ((1 << obj.layer) & targetLayer) != 0;
 
-    private void OnTriggerEnter(Collider other)
-    {
-        if (other.CompareTag("Player"))
-        {
-            isPlayerInside = true;
-            currentPlayer = other.transform;
-
-            float distance = Vector3.Distance(other.transform.position, transform.position);
-            VRButtonProximityManager.Instance.ReportProximity(other.transform, this, distance);
-
-            SendHaptic(0.3f, 0.1f); // 👉 碰到震動：輕
+            default:
+                return false;
         }
     }
 
-    private void OnTriggerStay(Collider other)
+    private void OnCollisionEnter(Collision collision)
     {
-        if (other.CompareTag("Player"))
+        if (IsCollisionValid(collision.gameObject))
         {
-            float distance = Vector3.Distance(other.transform.position, transform.position);
-            VRButtonProximityManager.Instance.ReportProximity(other.transform, this, distance);
+            onCollisionEnter?.Invoke();
         }
     }
 
-    private void OnTriggerExit(Collider other)
+    private void OnCollisionStay(Collision collision)
     {
-        if (other.CompareTag("Player") && other.transform == currentPlayer)
+        if (IsCollisionValid(collision.gameObject))
         {
-            if (wasGrabbing) onButtonRelease?.Invoke();
-            VRButtonProximityManager.Instance.Unregister(other.transform, this);
-            isPlayerInside = false;
-            currentPlayer = null;
-            wasGrabbing = false;
+            onCollisionStay?.Invoke();
         }
     }
 
-    private void SendHaptic(float amplitude, float duration)
+    private void OnCollisionExit(Collision collision)
     {
-        if (device.isValid && device.TryGetHapticCapabilities(out HapticCapabilities capabilities) && capabilities.supportsImpulse)
+        if (IsCollisionValid(collision.gameObject))
         {
-            device.SendHapticImpulse(0, amplitude, duration);
+            onCollisionExit?.Invoke();
         }
     }
 }

@@ -124,6 +124,7 @@ public class EmotionalStroopCore : MonoBehaviour
             bool responded = false;
 
             int correctCount = -1;
+            
             switch (data.type)
             {
                 case StroopType.Congruent:

@@ -1,8 +1,11 @@
 // 整合完整版的 Adaptive N-back 任務腳本
+
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text;
 using UnityEngine;
 using UnityEngine.XR;
 using Random = UnityEngine.Random;
@@ -25,8 +28,7 @@ public class TrialResult
 
 public class NBackGame : MonoBehaviour
 {
-    [Header("n-back 設定")]
-    [Range(1, 3)] public int n = 2;
+    [Header("n-back 設定")] [Range(1, 3)] public int n = 2;
     public int totalTrials = 20;
     public float[] stimulusInterval;
     public int visualTrials = 5;
@@ -35,20 +37,16 @@ public class NBackGame : MonoBehaviour
     public int totalVisualStimuli = 0;
     public int totalAudioStimuli = 0;
 
-    [Header("九宮格(視覺)設定")]
-    public GameObject[] gridPlanes;
+    [Header("九宮格(視覺)設定")] public GameObject[] gridPlanes;
 
-    [Header("聲音(聽覺)設定")]
-    public AudioSource audioSource;
+    [Header("聲音(聽覺)設定")] public AudioSource audioSource;
     public List<AudioClip> audioClipsStimuli, audioClipsNormal, audioClips;
     public List<Sprite> stimuliSprites, normalSprites, visualAllSprites;
 
-    [Header("玩家按鍵設定")]
-    public KeyCode visualKey = KeyCode.Space;
+    [Header("玩家按鍵設定")] public KeyCode visualKey = KeyCode.Space;
     public KeyCode audioKey = KeyCode.Z;
 
-    [Header("UI 提示物件")]
-    public GameObject restPanel;
+    [Header("UI 提示物件")] public GameObject restPanel;
 
     public List<int> visualIDList = new();
     public List<int> audioIDList = new();
@@ -60,7 +58,7 @@ public class NBackGame : MonoBehaviour
     private List<float> audioAccuracyRecord = new();
     private List<int> nRecord = new();
 
-    public bool isVisualCheck , isAudioCheck;
+    public bool isVisualCheck, isAudioCheck;
 
     private int visualHit, visualMiss, visualFalseAlarm, visualCorrectRejection;
     private int audioHit, audioMiss, audioFalseAlarm, audioCorrectRejection;
@@ -79,175 +77,173 @@ public class NBackGame : MonoBehaviour
 
         StartCoroutine(MultiRoundGame());
     }
-    
+
     private void Init()
-   {
-    bool success = false;
-    totalTrials += n;
-    
-    _stimuliSprites = stimuliSprites.ToList();
-    _audioClipsStimuli = audioClipsStimuli.ToList();
-    
-    Shuffle(normalSprites);
-    Shuffle(stimuliSprites);
-    
-    Shuffle(audioClipsStimuli);
-    Shuffle(audioClipsNormal);
-    
-    for (int i = 0; i < 6; i++)
     {
-        visualAllSprites.Add(normalSprites[0]);
-        visualAllSprites.Add(stimuliSprites[0]);
+        bool success = false;
+        totalTrials += n;
 
-        normalSprites.RemoveAt(0);
-        stimuliSprites.RemoveAt(0);
-    }
+        _stimuliSprites = stimuliSprites.ToList();
+        _audioClipsStimuli = audioClipsStimuli.ToList();
 
-    for (int i = 0; i < 6; i++)
-    {
-        audioClips.Add(audioClipsNormal[0]);
-        audioClips.Add(audioClipsStimuli[0]);
-        
-        audioClipsStimuli.RemoveAt(0);
-        audioClipsNormal.RemoveAt(0);
-    }
-    
-    Shuffle(visualAllSprites);
-    Shuffle(audioClips);
-    
-    while (!success)
-    {
-        visualResponseList.Clear();
-        audioResponseList.Clear();
-        visualIDList.Clear();
-        audioIDList.Clear();
+        Shuffle(normalSprites);
+        Shuffle(stimuliSprites);
 
-        
+        Shuffle(audioClipsStimuli);
+        Shuffle(audioClipsNormal);
 
-        for (int i = 0; i < totalTrials; i++)
+        for (int i = 0; i < 6; i++)
         {
-            visualResponseList.Add(false);
-            audioResponseList.Add(false);
+            visualAllSprites.Add(normalSprites[0]);
+            visualAllSprites.Add(stimuliSprites[0]);
+
+            normalSprites.RemoveAt(0);
+            stimuliSprites.RemoveAt(0);
         }
 
-        // 分配 index
-        List<int> allIndices = new List<int>();
-        for (int i = 0; i < totalTrials; i++) allIndices.Add(i);
-        Shuffle(allIndices);
-
-        List<int> bothIndices = allIndices.GetRange(0, bothTrials);
-        List<int> remaining = allIndices.GetRange(bothTrials, allIndices.Count - bothTrials);
-        List<int> visualOnlyIndices = remaining.GetRange(0, visualTrials);
-        List<int> audioOnlyIndices = remaining.GetRange(visualTrials, audioTrials);
-
-        foreach (int i in bothIndices)
+        for (int i = 0; i < 6; i++)
         {
-            visualResponseList[i] = true;
-            audioResponseList[i] = true;
+            audioClips.Add(audioClipsNormal[0]);
+            audioClips.Add(audioClipsStimuli[0]);
+
+            audioClipsStimuli.RemoveAt(0);
+            audioClipsNormal.RemoveAt(0);
         }
 
-        foreach (int i in visualOnlyIndices)
-            visualResponseList[i] = true;
+        Shuffle(visualAllSprites);
+        Shuffle(audioClips);
 
-        foreach (int i in audioOnlyIndices)
-            audioResponseList[i] = true;
-
-        // 檢查是否所有 true 都能向前推 n
-        success = true;
-        for (int i = 0; i < totalTrials; i++)
+        while (!success)
         {
-            if ((visualResponseList[i] || audioResponseList[i]) && i - n < 0)
+            visualResponseList.Clear();
+            audioResponseList.Clear();
+            visualIDList.Clear();
+            audioIDList.Clear();
+
+
+            for (int i = 0; i < totalTrials; i++)
             {
-                success = false;
-                break;
+                visualResponseList.Add(false);
+                audioResponseList.Add(false);
             }
-        }
 
-        if (!success) continue;
+            // 分配 index
+            List<int> allIndices = new List<int>();
+            for (int i = 0; i < totalTrials; i++) allIndices.Add(i);
+            Shuffle(allIndices);
 
-        // 先給隨機 ID
-        for (int i = 0; i < totalTrials; i++)
-        {
-            visualIDList.Add(Random.Range(0, gridPlanes.Length));
-            audioIDList.Add(Random.Range(0, audioClips.Count));
-        }
+            List<int> bothIndices = allIndices.GetRange(0, bothTrials);
+            List<int> remaining = allIndices.GetRange(bothTrials, allIndices.Count - bothTrials);
+            List<int> visualOnlyIndices = remaining.GetRange(0, visualTrials);
+            List<int> audioOnlyIndices = remaining.GetRange(visualTrials, audioTrials);
 
-        // N-back 往回複製
-        for (int i = 0; i < totalTrials; i++)
-        {
-            if (visualResponseList[i] && i - n >= 0)
-                visualIDList[i] = visualIDList[i - n];
-
-            if (audioResponseList[i] && i - n >= 0)
-                audioIDList[i] = audioIDList[i - n];
-        }
-
-        // 檢查是否有重複
-        
-        // 持續檢查直到沒有誤中 n-back 為止
-        bool conflictExists;
-
-        do
-        {
-            conflictExists = false;
-
-            for (int i = n; i < totalTrials; i++)
+            foreach (int i in bothIndices)
             {
-                // 視覺檢查
-                if (!visualResponseList[i] && visualIDList[i] == visualIDList[i - n])
+                visualResponseList[i] = true;
+                audioResponseList[i] = true;
+            }
+
+            foreach (int i in visualOnlyIndices)
+                visualResponseList[i] = true;
+
+            foreach (int i in audioOnlyIndices)
+                audioResponseList[i] = true;
+
+            // 檢查是否所有 true 都能向前推 n
+            success = true;
+            for (int i = 0; i < totalTrials; i++)
+            {
+                if ((visualResponseList[i] || audioResponseList[i]) && i - n < 0)
                 {
-                    conflictExists = true;
-                    Debug.Log($"⚠️ 修正視覺 N-back 錯誤 at index {i} (ID: {visualIDList[i]})");
-
-                    int maxTry = 50;
-                    while (maxTry-- > 0)
-                    {
-                        int g = Random.Range(0, gridPlanes.Length);
-                        if (g != visualIDList[i - n])
-                        {
-                            visualIDList[i] = g;
-                            break;
-                        }
-                    }
-                }
-
-                // 聽覺檢查
-                if (!audioResponseList[i] && audioIDList[i] == audioIDList[i - n])
-                {
-                    conflictExists = true;
-                    Debug.Log($"⚠️ 修正聽覺 N-back 錯誤 at index {i} (ID: {audioIDList[i]})");
-
-                    int maxTry = 50;
-                    while (maxTry-- > 0)
-                    {
-                        int g = Random.Range(0, audioClips.Count);
-                        if (g != audioIDList[i - n])
-                        {
-                            audioIDList[i] = g;
-                            break;
-                        }
-                    }
+                    success = false;
+                    break;
                 }
             }
 
-        } while (conflictExists);
+            if (!success) continue;
+
+            // 先給隨機 ID
+            for (int i = 0; i < totalTrials; i++)
+            {
+                visualIDList.Add(Random.Range(0, gridPlanes.Length));
+                audioIDList.Add(Random.Range(0, audioClips.Count));
+            }
+
+            // N-back 往回複製
+            for (int i = 0; i < totalTrials; i++)
+            {
+                if (visualResponseList[i] && i - n >= 0)
+                    visualIDList[i] = visualIDList[i - n];
+
+                if (audioResponseList[i] && i - n >= 0)
+                    audioIDList[i] = audioIDList[i - n];
+            }
+
+            // 檢查是否有重複
+
+            // 持續檢查直到沒有誤中 n-back 為止
+            bool conflictExists;
+
+            do
+            {
+                conflictExists = false;
+
+                for (int i = n; i < totalTrials; i++)
+                {
+                    // 視覺檢查
+                    if (!visualResponseList[i] && visualIDList[i] == visualIDList[i - n])
+                    {
+                        conflictExists = true;
+                        Debug.Log($"⚠️ 修正視覺 N-back 錯誤 at index {i} (ID: {visualIDList[i]})");
+
+                        int maxTry = 50;
+                        while (maxTry-- > 0)
+                        {
+                            int g = Random.Range(0, gridPlanes.Length);
+                            if (g != visualIDList[i - n])
+                            {
+                                visualIDList[i] = g;
+                                break;
+                            }
+                        }
+                    }
+
+                    // 聽覺檢查
+                    if (!audioResponseList[i] && audioIDList[i] == audioIDList[i - n])
+                    {
+                        conflictExists = true;
+                        Debug.Log($"⚠️ 修正聽覺 N-back 錯誤 at index {i} (ID: {audioIDList[i]})");
+
+                        int maxTry = 50;
+                        while (maxTry-- > 0)
+                        {
+                            int g = Random.Range(0, audioClips.Count);
+                            if (g != audioIDList[i - n])
+                            {
+                                audioIDList[i] = g;
+                                break;
+                            }
+                        }
+                    }
+                }
+            } while (conflictExists);
 
 
-        // ✅ 成功生成，印出 debug 表格
-        Debug.Log("✅ 成功配置 N-back 任務，以下是詳細配置：");
+            // ✅ 成功生成，印出 debug 表格
+            Debug.Log("✅ 成功配置 N-back 任務，以下是詳細配置：");
 
-        for (int i = 0; i < totalTrials; i++)
-        {
-            string type = (visualResponseList[i] && audioResponseList[i]) ? "Both" :
-                          (visualResponseList[i]) ? "Visual" :
-                          (audioResponseList[i]) ? "Audio" : "None";
+            for (int i = 0; i < totalTrials; i++)
+            {
+                string type = (visualResponseList[i] && audioResponseList[i]) ? "Both" :
+                    (visualResponseList[i]) ? "Visual" :
+                    (audioResponseList[i]) ? "Audio" : "None";
 
-            Debug.Log($"[{i:D2}]  {type,-6} |  V-ID: {visualIDList[i]}  A-ID: {audioIDList[i]}");
+                Debug.Log($"[{i:D2}]  {type,-6} |  V-ID: {visualIDList[i]}  A-ID: {audioIDList[i]}");
+            }
+
+            break;
         }
-        break; 
     }
-    
-   }
 
     private IEnumerator MultiRoundGame()
     {
@@ -290,7 +286,8 @@ public class NBackGame : MonoBehaviour
         Debug.Log("✅ 三輪測試完成結果：");
         for (int i = 0; i < visualAccuracyRecord.Count; i++)
         {
-            Debug.Log($"📊 第{i + 1}輪：n = {nRecord[i]}, 視覺 {visualAccuracyRecord[i] * 100f:F2}%, 聽覺 {audioAccuracyRecord[i] * 100f:F2}%");
+            Debug.Log(
+                $"📊 第{i + 1}輪：n = {nRecord[i]}, 視覺 {visualAccuracyRecord[i] * 100f:F2}%, 聽覺 {audioAccuracyRecord[i] * 100f:F2}%");
         }
     }
 
@@ -318,16 +315,16 @@ public class NBackGame : MonoBehaviour
             (list[i], list[j]) = (list[j], list[i]);
         }
     }
-    
+
     IEnumerator GameLoop()
     {
         Debug.Log("🎮 遊戲開始！");
-        trialResults.Clear();
+        //trialResults.Clear();
         visualHit = visualMiss = visualFalseAlarm = visualCorrectRejection = 0;
         audioHit = audioMiss = audioFalseAlarm = audioCorrectRejection = 0;
 
         int vistualStimuliIndex = 0, audioStimuliIndex = 0;
-        
+
         for (int i = 0; i < totalTrials; i++)
         {
             float interval = stimulusInterval[Random.Range(0, stimulusInterval.Length)];
@@ -338,33 +335,37 @@ public class NBackGame : MonoBehaviour
             foreach (var plane in gridPlanes)
                 plane.GetComponent<Renderer>().material.SetTexture("_BaseMap", null);
 
-            bool isVisualOrFutureVisual = visualResponseList[i] || (i + n < visualResponseList.Count && visualResponseList[i + n]);
+            bool isVisualOrFutureVisual =
+                visualResponseList[i] || (i + n < visualResponseList.Count && visualResponseList[i + n]);
             Sprite currentSprite;
-            
+
             if (isVisualOrFutureVisual)
             {
                 if (this.totalVisualStimuli > currentVisualStimuli)
                 {
                     currentSprite = stimuliSprites[vistualStimuliIndex];
-                    gridPlanes[vID].GetComponent<Renderer>().material.SetTexture("_BaseMap", stimuliSprites[vistualStimuliIndex].texture);
+                    gridPlanes[vID].GetComponent<Renderer>().material
+                        .SetTexture("_BaseMap", stimuliSprites[vistualStimuliIndex].texture);
                     currentVisualStimuli++;
                 }
                 else
                 {
                     currentSprite = normalSprites[vistualStimuliIndex];
-                    gridPlanes[vID].GetComponent<Renderer>().material.SetTexture("_BaseMap", normalSprites[vistualStimuliIndex].texture);
+                    gridPlanes[vID].GetComponent<Renderer>().material
+                        .SetTexture("_BaseMap", normalSprites[vistualStimuliIndex].texture);
                 }
             }
             else
             {
                 int r = Random.Range(0, visualAllSprites.Count);
-                
+
                 currentSprite = visualAllSprites[r];
                 gridPlanes[vID].GetComponent<Renderer>().material.SetTexture("_BaseMap", visualAllSprites[r].texture);
             }
 
-            bool isAudioOrFutureAudio = audioResponseList[i] || (i + n < audioResponseList.Count && audioResponseList[i + n]);
-            
+            bool isAudioOrFutureAudio =
+                audioResponseList[i] || (i + n < audioResponseList.Count && audioResponseList[i + n]);
+
             if (isAudioOrFutureAudio)
             {
                 if (this.totalAudioStimuli > currentAudioStimuli)
@@ -383,7 +384,7 @@ public class NBackGame : MonoBehaviour
             }
 
             audioSource.Play();
-            
+
             bool isAudioSimilar = _audioClipsStimuli.Contains(audioSource.clip);
             bool isVisualSimilar = _stimuliSprites.Contains(currentSprite);
 
@@ -424,24 +425,64 @@ public class NBackGame : MonoBehaviour
 
             if (visualResponseList[i])
             {
-                if (visualPressed) { result.visualCorrect = true; result.visualResultType = "Hit"; visualHit++; }
-                else { result.visualCorrect = false; result.visualResultType = "Miss"; visualMiss++; }
+                if (visualPressed)
+                {
+                    result.visualCorrect = true;
+                    result.visualResultType = "Hit";
+                    visualHit++;
+                }
+                else
+                {
+                    result.visualCorrect = false;
+                    result.visualResultType = "Miss";
+                    visualMiss++;
+                }
             }
             else
             {
-                if (visualPressed) { result.visualCorrect = false; result.visualResultType = "FalseAlarm"; visualFalseAlarm++; }
-                else { result.visualCorrect = true; result.visualResultType = "CorrectRejection"; visualCorrectRejection++; }
+                if (visualPressed)
+                {
+                    result.visualCorrect = false;
+                    result.visualResultType = "FalseAlarm";
+                    visualFalseAlarm++;
+                }
+                else
+                {
+                    result.visualCorrect = true;
+                    result.visualResultType = "CorrectRejection";
+                    visualCorrectRejection++;
+                }
             }
 
             if (audioResponseList[i])
             {
-                if (audioPressed) { result.audioCorrect = true; result.audioResultType = "Hit"; audioHit++; }
-                else { result.audioCorrect = false; result.audioResultType = "Miss"; audioMiss++; }
+                if (audioPressed)
+                {
+                    result.audioCorrect = true;
+                    result.audioResultType = "Hit";
+                    audioHit++;
+                }
+                else
+                {
+                    result.audioCorrect = false;
+                    result.audioResultType = "Miss";
+                    audioMiss++;
+                }
             }
             else
             {
-                if (audioPressed) { result.audioCorrect = false; result.audioResultType = "FalseAlarm"; audioFalseAlarm++; }
-                else { result.audioCorrect = true; result.audioResultType = "CorrectRejection"; audioCorrectRejection++; }
+                if (audioPressed)
+                {
+                    result.audioCorrect = false;
+                    result.audioResultType = "FalseAlarm";
+                    audioFalseAlarm++;
+                }
+                else
+                {
+                    result.audioCorrect = true;
+                    result.audioResultType = "CorrectRejection";
+                    audioCorrectRejection++;
+                }
             }
 
             trialResults.Add(result);
@@ -459,8 +500,10 @@ public class NBackGame : MonoBehaviour
 
         Debug.Log("======= ✅ 遊戲結束！統計結果如下： =======");
 
-        Debug.Log($"📷 視覺 ➜ Hit: {visualHit}, Total Stimuli: {actualVisualStimuli}, Accuracy: {(visualAccuracy * 100f):F2}%");
-        Debug.Log($"🎧 聽覺 ➜ Hit: {audioHit}, Total Stimuli: {actualAudioStimuli}, Accuracy: {(audioAccuracy * 100f):F2}%");
+        Debug.Log(
+            $"📷 視覺 ➜ Hit: {visualHit}, Total Stimuli: {actualVisualStimuli}, Accuracy: {(visualAccuracy * 100f):F2}%");
+        Debug.Log(
+            $"🎧 聽覺 ➜ Hit: {audioHit}, Total Stimuli: {actualAudioStimuli}, Accuracy: {(audioAccuracy * 100f):F2}%");
 
         int visualStimuliCount = trialResults.Count(r => r.visualStimulusType == "刺激");
         int visualNormalCount = trialResults.Count(r => r.visualStimulusType == "普通");
@@ -471,16 +514,52 @@ public class NBackGame : MonoBehaviour
         Debug.Log($"視覺 ➜ 刺激: {visualStimuliCount}, 普通: {visualNormalCount}");
         Debug.Log($"聽覺 ➜ 刺激: {audioStimuliCount}, 普通: {audioNormalCount}");
     }
-    
+
     public void SetVisualCheck(bool check)
     {
         isVisualCheck = check;
     }
-    
+
     public void SetAudioCheck(bool check)
     {
         isAudioCheck = check;
     }
+
+    public void ExportTrialResultsToCSV()
+    {
+#if UNITY_ANDROID && !UNITY_EDITOR
+            string path =
+ "/storage/emulated/0/Download/NBackResults_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".csv";
+#else
+        string path = Application.dataPath + "/NBackResults_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".csv";
+#endif
+
+        StringBuilder csv = new StringBuilder();
+        csv.AppendLine(
+            "trialIndex,isVisualStimulus,isAudioStimulus,visualCorrect,audioCorrect,visualReactionTime,audioReactionTime,visualResultType,audioResultType,visualStimulusType,audioStimulusType");
+        foreach (var result in trialResults)
+        {
+            csv.AppendLine($"{result.trialIndex}," +
+                           $"{result.isVisualStimulus}," +
+                           $"{result.isAudioStimulus}," +
+                           $"{result.visualCorrect}," +
+                           $"{result.audioCorrect}," +
+                           $"{result.visualReactionTime}," +
+                           $"{result.audioReactionTime}," +
+                           $"{result.visualResultType}," +
+                           $"{result.audioResultType}," +
+                           $"{result.visualStimulusType}," +
+                           $"{result.audioStimulusType}");
+        }
+
+        try
+        {
+            File.WriteAllText(path, csv.ToString());
+            Debug.Log("✅ CSV 已儲存至: " + path);
+        }
+        catch (Exception e)
+        {
+            Debug.LogError("❌ 無法寫入CSV: " + e.Message);
+        }
+    }
 }
-
-

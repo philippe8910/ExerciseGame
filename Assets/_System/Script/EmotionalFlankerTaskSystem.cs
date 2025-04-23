@@ -1,6 +1,8 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text;
 using Sirenix.OdinInspector;
 using TMPro;
 using UnityEngine;
@@ -110,6 +112,8 @@ public class EmotionalFlankerTaskSystem : MonoBehaviour
 
         Debug.Log($"✅ 正確率: {correctCount}/{totalCount} ({accuracy:F2}%)");
         Debug.Log($"⏱️ 平均反應時間（正確題）: {averageResponseTime:F2} 秒");
+        
+        ExportFlankerResultsToCSV();
     }
 
     private void ShuffleList<T>(List<T> list)
@@ -166,6 +170,74 @@ public class EmotionalFlankerTaskSystem : MonoBehaviour
 
         ShuffleList(currentData);
     }
+    
+    public void ExportFlankerResultsToCSV()
+{
+#if UNITY_ANDROID && !UNITY_EDITOR
+    string path = "/storage/emulated/0/Download/FlankerResults_" + System.DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".csv";
+#else
+    string path = Application.dataPath + "/FlankerResults_" + System.DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".csv";
+#endif
+
+    StringBuilder csv = new StringBuilder();
+    csv.AppendLine("Index,Letter,MidColor,OtherColor,IsNegative,IsCorrect,ResponseTime");
+
+    int correctCount = 0;
+    float totalResponseTime = 0f;
+    int totalCount = currentData.Count;
+
+    for (int i = 0; i < currentData.Count; i++)
+    {
+        var data = currentData[i];
+
+        string midColorStr = ColorToString(data.midColor);
+        string otherColorStr = ColorToString(data.OtherColor);
+
+        if (data.isCorrect)
+        {
+            correctCount++;
+            totalResponseTime += data.responseTime;
+        }
+
+        csv.AppendLine($"{i}," +
+                       $"{data.currentLetter}," +
+                       $"{midColorStr}," +
+                       $"{otherColorStr}," +
+                       $"{data.isNegative}," +
+                       $"{data.isCorrect}," +
+                       $"{data.responseTime:F3}");
+    }
+
+    float accuracy = totalCount > 0 ? (float)correctCount / totalCount * 100f : 0f;
+    float averageRT = correctCount > 0 ? totalResponseTime / correctCount : 0f;
+
+    csv.AppendLine(); // 空行
+    csv.AppendLine($"總題數,{totalCount}");
+    csv.AppendLine($"正確題數,{correctCount}");
+    csv.AppendLine($"正確率,{accuracy:F2}%");
+    csv.AppendLine($"平均反應時間（僅計算正確題）, {averageRT:F3} 秒");
+
+    try
+    {
+        File.WriteAllText(path, csv.ToString());
+        Debug.Log("✅ Flanker CSV 已儲存至: " + path);
+    }
+    catch (System.Exception e)
+    {
+        Debug.LogError("❌ 無法寫入Flanker CSV: " + e.Message);
+    }
+}
+
+private string ColorToString(Color c)
+{
+    if (c == Color.red) return "Red";
+    if (c == Color.green) return "Green";
+    if (c == Color.blue) return "Blue";
+    if (c == Color.white) return "White";
+    if (c == Color.black) return "Black";
+    return $"RGBA({c.r:F2},{c.g:F2},{c.b:F2},{c.a:F2})";
+}
+
 }
 
 [System.Serializable]
