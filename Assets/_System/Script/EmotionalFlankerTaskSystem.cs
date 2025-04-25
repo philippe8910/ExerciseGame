@@ -16,6 +16,8 @@ public class EmotionalFlankerTaskSystem : MonoBehaviour
 
     public List<FlankerTaskData> currentData = new List<FlankerTaskData>();
 
+    public GameObject endPanel;
+
     public TMP_Text middleLetter;
     public TMP_Text upperLetter, bottomLetter;
 
@@ -112,6 +114,8 @@ public class EmotionalFlankerTaskSystem : MonoBehaviour
 
         Debug.Log($"✅ 正確率: {correctCount}/{totalCount} ({accuracy:F2}%)");
         Debug.Log($"⏱️ 平均反應時間（正確題）: {averageResponseTime:F2} 秒");
+        
+        endPanel.SetActive(true);
         
         ExportFlankerResultsToCSV();
     }

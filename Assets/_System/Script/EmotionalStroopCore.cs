@@ -28,6 +28,7 @@ public class EmotionalStroopCore : MonoBehaviour
     public Image iconImage;
     public Image crossHairImage;
     public GameObject restPanel;
+    public GameObject endPanel;
 
     [Header("Prefab")] 
     public GameObject congruentPrefab, incongruentPrefab, starsArrayPrefab;
@@ -214,6 +215,8 @@ public class EmotionalStroopCore : MonoBehaviour
         Debug.Log("🎉 實驗完成！");
         Debug.Log($"🎯 正確率：{correct}/{total}（{accuracy:F2}%）");
         Debug.Log($"⏱ 平均反應時間：{avgTime:F2} 秒");
+        
+        endPanel.SetActive(true);
     }
 
     public static void Shuffle<T>(List<T> list)

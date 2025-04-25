@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using TMPro;
 using UnityEngine;
 using UnityEngine.XR;
 using Random = UnityEngine.Random;
@@ -38,6 +39,8 @@ public class NBackGame : MonoBehaviour
     public int totalAudioStimuli = 0;
 
     [Header("九宮格(視覺)設定")] public GameObject[] gridPlanes;
+    [Header("結束面板")] public GameObject endPanel;
+    [Header("N數字")] public TMP_Text nText;
 
     [Header("聲音(聽覺)設定")] public AudioSource audioSource;
     public List<AudioClip> audioClipsStimuli, audioClipsNormal, audioClips;
@@ -281,14 +284,19 @@ public class NBackGame : MonoBehaviour
                 yield return StartCoroutine(WaitForBothHandsTrigger());
                 restPanel.SetActive(false);
             }
+            
+            
         }
 
         Debug.Log("✅ 三輪測試完成結果：");
+        endPanel.SetActive(true);
         for (int i = 0; i < visualAccuracyRecord.Count; i++)
         {
             Debug.Log(
                 $"📊 第{i + 1}輪：n = {nRecord[i]}, 視覺 {visualAccuracyRecord[i] * 100f:F2}%, 聽覺 {audioAccuracyRecord[i] * 100f:F2}%");
         }
+
+        ExportTrialResultsToCSV();
     }
 
     private IEnumerator WaitForBothHandsTrigger()
@@ -324,6 +332,8 @@ public class NBackGame : MonoBehaviour
         audioHit = audioMiss = audioFalseAlarm = audioCorrectRejection = 0;
 
         int vistualStimuliIndex = 0, audioStimuliIndex = 0;
+        
+        nText.text = "N = " + n;
 
         for (int i = 0; i < totalTrials; i++)
         {
