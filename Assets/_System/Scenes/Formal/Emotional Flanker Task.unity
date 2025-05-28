@@ -1816,9 +1816,9 @@ MonoBehaviour:
   greenColor: {r: 0, g: 1, b: 0, a: 1}
   timeBetweenTrials: 2
   responseTimeLimit:
-  - 0.01
-  - 0.01
-  - 0.01
+  - 2
+  - 2.5
+  - 3
   leftFlag: {fileID: 522059646}
   rightFlag: {fileID: 1211088254}
   isTest: 0

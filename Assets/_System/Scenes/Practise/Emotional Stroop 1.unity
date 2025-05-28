@@ -2692,7 +2692,7 @@ MonoBehaviour:
     type: 3}
   starsArrayPrefab: {fileID: 6581360821185573973, guid: 4cfb110d6253445e08b159642f7364b2,
     type: 3}
-  timeInterval: 1
+  timeInterval: 2.5
   currentTrialList: []
   isTest: 0
   triggerNumber: -1
