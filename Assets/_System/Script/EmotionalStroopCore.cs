@@ -3,7 +3,9 @@ using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text;
 using UnityEngine.XR;
 using Random = UnityEngine.Random;
 
@@ -36,11 +38,13 @@ public class EmotionalStroopCore : MonoBehaviour
     [Header("設定")]
     public float timeInterval = 2.0f;
 
-    private const int totalBlocks = 5;
-    private const int trialsPerBlock = 144;
+    private int totalBlocks = 5;
+    private int trialsPerBlock = 144;
 
     public List<StroopData> currentTrialList = new();
     private List<bool> isNegativeList = new();
+
+    public bool isTest = false;
 
     private IEnumerator Start()
     {
@@ -51,6 +55,13 @@ public class EmotionalStroopCore : MonoBehaviour
     public void Init()
     {
         iconImage.sprite = null;
+
+        if (isTest)
+        {
+            totalBlocks = 1;
+            trialsPerBlock = 10;
+        }
+        
 
         // 建立所有 trials
         for (int i = 0; i < totalBlocks * trialsPerBlock; i++)
@@ -75,6 +86,8 @@ public class EmotionalStroopCore : MonoBehaviour
 
     private IEnumerator StartExperiment()
     {
+        yield return StartCoroutine(waitForGameStart());
+        
         for (int block = 0; block < totalBlocks; block++)
         {
             Debug.Log($"🚩 Block {block + 1} 開始");
@@ -165,6 +178,12 @@ public class EmotionalStroopCore : MonoBehaviour
             Destroy(g);
         }
     }
+    
+    private IEnumerator waitForGameStart()
+    {
+        yield return new WaitForSeconds(5);
+        yield return null;
+    }
 
     private IEnumerator WaitForBothHandsTrigger()
     {
@@ -236,6 +255,54 @@ public class EmotionalStroopCore : MonoBehaviour
         triggerNumber = i;
     }
     
+    public void ExportStroopResultsToCSV()
+    {
+#if UNITY_ANDROID && !UNITY_EDITOR
+    string path = "/storage/emulated/0/Download/StroopResults_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".csv";
+#else
+        string path = Application.dataPath + "/StroopResults_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + "-" + PlayerPrefs.GetString("ID") + ".csv";
+#endif
+
+        StringBuilder csv = new StringBuilder();
+        csv.AppendLine("Index,Type,IsNegative,IsCorrect,ResponseTime");
+
+        int correctCount = 0;
+        float totalResponseTime = 0f;
+        int totalCount = currentTrialList.Count;
+
+        for (int i = 0; i < currentTrialList.Count; i++)
+        {
+            var data = currentTrialList[i];
+            string typeStr = data.type.ToString();
+
+            if (data.isCorrect)
+            {
+                correctCount++;
+                totalResponseTime += data.responseTime;
+            }
+
+            csv.AppendLine($"{i},{typeStr},{data.isNegative},{data.isCorrect},{data.responseTime:F3}");
+        }
+
+        float accuracy = totalCount > 0 ? (float)correctCount / totalCount * 100f : 0f;
+        float averageRT = correctCount > 0 ? totalResponseTime / correctCount : 0f;
+
+        csv.AppendLine();
+        csv.AppendLine($"總題數,{totalCount}");
+        csv.AppendLine($"正確題數,{correctCount}");
+        csv.AppendLine($"正確率,{accuracy:F2}%");
+        csv.AppendLine($"平均反應時間（僅計算正確題）, {averageRT:F3} 秒");
+
+        try
+        {
+            File.WriteAllText(path, csv.ToString());
+            Debug.Log("✅ Stroop CSV 已儲存至: " + path);
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError("❌ 無法寫入Stroop CSV: " + e.Message);
+        }
+    }
 }
 
 public enum StroopType

@@ -29,6 +29,9 @@ public class TrialResult
 
 public class NBackGame : MonoBehaviour
 {
+    [Header("準備時間")] 
+    public float waitTime = 10f;
+    
     [Header("n-back 設定")] [Range(1, 3)] public int n = 2;
     public int totalTrials = 20;
     public float[] stimulusInterval;
@@ -70,6 +73,11 @@ public class NBackGame : MonoBehaviour
     private List<Sprite> _stimuliSprites = new();
     private List<AudioClip> _audioClipsStimuli = new();
 
+    public LineRenderer lineRenderer;
+    public LineRenderer lineRenderer2;
+    
+    public bool isTest = false;
+
     void Start()
     {
         if (gridPlanes == null || gridPlanes.Length == 0 || audioSource == null)
@@ -77,6 +85,9 @@ public class NBackGame : MonoBehaviour
             Debug.LogError("請設定必要的元件！");
             return;
         }
+
+        lineRenderer.enabled = false;
+        lineRenderer2.enabled = false;
 
         StartCoroutine(MultiRoundGame());
     }
@@ -252,8 +263,11 @@ public class NBackGame : MonoBehaviour
     {
         Init();
 
-        for (int round = 0; round < 3; round++)
+        int roundCount = isTest ? 1 : 3;
+
+        for (int round = 0; round < roundCount; round++)
         {
+            yield return StartCoroutine(waitForGameStart());
             Debug.Log($"▶️ 開始第 {round + 1} 輪，n = {n}");
             yield return StartCoroutine(GameLoop());
 
@@ -276,8 +290,10 @@ public class NBackGame : MonoBehaviour
                 n = Mathf.Min(3, n + 1);
             else
                 n = Mathf.Max(1, n - 1);
+            
+            totalTrials = 20 + n;
 
-            if (round < 2)
+            if (round < 2 && !isTest)
             {
                 restPanel.SetActive(true);
                 Debug.Log("🛋️ 請休息，按下雙手 Trigger 繼續");
@@ -289,6 +305,9 @@ public class NBackGame : MonoBehaviour
         }
 
         Debug.Log("✅ 三輪測試完成結果：");
+        lineRenderer.enabled = true;
+        lineRenderer2.enabled = true;
+
         endPanel.SetActive(true);
         for (int i = 0; i < visualAccuracyRecord.Count; i++)
         {
@@ -301,17 +320,26 @@ public class NBackGame : MonoBehaviour
 
     private IEnumerator WaitForBothHandsTrigger()
     {
-        InputDevice left = InputDevices.GetDeviceAtXRNode(XRNode.LeftHand);
-        InputDevice right = InputDevices.GetDeviceAtXRNode(XRNode.RightHand);
+        //InputDevice left = InputDevices.GetDeviceAtXRNode(XRNode.LeftHand);
+        //InputDevice right = InputDevices.GetDeviceAtXRNode(XRNode.RightHand);
 
-        bool leftPressed = false, rightPressed = false;
+        //bool rightPressed = false;
 
-        while (!Input.GetKey(KeyCode.Space)) //(leftPressed && rightPressed)
-        {
-            left.TryGetFeatureValue(CommonUsages.triggerButton, out leftPressed);
-            right.TryGetFeatureValue(CommonUsages.triggerButton, out rightPressed);
-            yield return null;
-        }
+        //while (!Input.GetKeyDown(KeyCode.Space)) //(leftPressed && rightPressed)
+        //{
+            //left.TryGetFeatureValue(CommonUsages.triggerButton, out leftPressed);
+        //    right.TryGetFeatureValue(CommonUsages.triggerButton, out rightPressed);
+        //    yield return null;
+        //}
+
+        yield return new WaitForSeconds(120);
+        yield return null;
+    }
+
+    private IEnumerator waitForGameStart()
+    {
+        yield return new WaitForSeconds(waitTime);
+        yield return null;
     }
 
     public static void Shuffle<T>(List<T> list)
@@ -429,8 +457,8 @@ public class NBackGame : MonoBehaviour
                 isAudioStimulus = audioResponseList[i],
                 visualReactionTime = visualRT,
                 audioReactionTime = audioRT,
-                visualStimulusType = isVisualSimilar ? "刺激" : "普通",
-                audioStimulusType = isAudioSimilar ? "刺激" : "普通"
+                visualStimulusType = isVisualSimilar ? "負面" : "普通",
+                audioStimulusType = isAudioSimilar ? "負面" : "普通"
             };
 
             if (visualResponseList[i])
@@ -515,14 +543,14 @@ public class NBackGame : MonoBehaviour
         Debug.Log(
             $"🎧 聽覺 ➜ Hit: {audioHit}, Total Stimuli: {actualAudioStimuli}, Accuracy: {(audioAccuracy * 100f):F2}%");
 
-        int visualStimuliCount = trialResults.Count(r => r.visualStimulusType == "刺激");
+        int visualStimuliCount = trialResults.Count(r => r.visualStimulusType == "負面");
         int visualNormalCount = trialResults.Count(r => r.visualStimulusType == "普通");
-        int audioStimuliCount = trialResults.Count(r => r.audioStimulusType == "刺激");
+        int audioStimuliCount = trialResults.Count(r => r.audioStimulusType == "負面");
         int audioNormalCount = trialResults.Count(r => r.audioStimulusType == "普通");
 
         Debug.Log("📊 題目類型統計：");
-        Debug.Log($"視覺 ➜ 刺激: {visualStimuliCount}, 普通: {visualNormalCount}");
-        Debug.Log($"聽覺 ➜ 刺激: {audioStimuliCount}, 普通: {audioNormalCount}");
+        Debug.Log($"視覺 ➜ 負面: {visualStimuliCount}, 普通: {visualNormalCount}");
+        Debug.Log($"聽覺 ➜ 負面: {audioStimuliCount}, 普通: {audioNormalCount}");
     }
 
     public void SetVisualCheck(bool check)
@@ -541,7 +569,7 @@ public class NBackGame : MonoBehaviour
             string path =
  "/storage/emulated/0/Download/NBackResults_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".csv";
 #else
-        string path = Application.dataPath + "/NBackResults_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".csv";
+        string path = Application.dataPath + "/NBackResults_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + "-" + PlayerPrefs.GetString("ID") + ".csv";
 #endif
 
         StringBuilder csv = new StringBuilder();
