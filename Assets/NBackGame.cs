@@ -1,20 +1,21 @@
-// 整合完整版的 Adaptive N-back 任務腳本
-
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Diagnostics;
 using TMPro;
 using UnityEngine;
-using UnityEngine.XR;
+using Sirenix.OdinInspector;
 using Random = UnityEngine.Random;
+using Debug = UnityEngine.Debug;
 
-[System.Serializable]
+[Serializable]
 public class TrialResult
 {
     public int trialIndex;
+    public int nValue;
     public bool isVisualStimulus;
     public bool isAudioStimulus;
     public bool visualCorrect;
@@ -23,561 +24,874 @@ public class TrialResult
     public float audioReactionTime;
     public string visualResultType;
     public string audioResultType;
-    public string visualStimulusType;
-    public string audioStimulusType;
 }
 
 public class NBackGame : MonoBehaviour
 {
-    [Header("準備時間")] 
+    [TitleGroup("遊戲設定")] [LabelText("休息時間 (秒)")] [MinValue(0)]
+    public int restTime = 120;
+
+    [TitleGroup("遊戲設定")] [LabelText("準備時間 (秒)")] [MinValue(0)]
     public float waitTime = 10f;
-    
-    [Header("n-back 設定")] [Range(1, 3)] public int n = 2;
-    public int totalTrials = 20;
-    public float[] stimulusInterval;
+
+    [LabelText("測試模式"), Tooltip("開啟後只進行一輪測試")]
+    public bool isTest = false;
+
+    [TitleGroup("N-Back 參數")] [Range(1, 3), LabelText("初始 N 值")]
+    public int n = 2;
+
+    [LabelText("每輪試次數"), MinValue(10)] public int baseTrials = 20;
+
+    [TitleGroup("試次分配")] [LabelText("僅視覺試次數"), MinValue(0)]
     public int visualTrials = 5;
-    public int audioTrials = 5;
-    public int bothTrials = 2;
-    public int totalVisualStimuli = 0;
-    public int totalAudioStimuli = 0;
 
-    [Header("九宮格(視覺)設定")] public GameObject[] gridPlanes;
-    [Header("結束面板")] public GameObject endPanel;
-    [Header("N數字")] public TMP_Text nText;
+    [LabelText("僅聽覺試次數"), MinValue(0)] public int audioTrials = 5;
 
-    [Header("聲音(聽覺)設定")] public AudioSource audioSource;
-    public List<AudioClip> audioClipsStimuli, audioClipsNormal, audioClips;
-    public List<Sprite> stimuliSprites, normalSprites, visualAllSprites;
+    [LabelText("雙重試次數"), MinValue(0)] public int bothTrials = 2;
 
-    [Header("玩家按鍵設定")] public KeyCode visualKey = KeyCode.Space;
-    public KeyCode audioKey = KeyCode.Z;
+    [TitleGroup("反應時間設定")] [LabelText("視覺反應時間 (毫秒)")] [InfoBox("視覺刺激的反應時間視窗")]
+    public float visualResponseTime = 500f;
 
-    [Header("UI 提示物件")] public GameObject restPanel;
+    [LabelText("聽覺反應時間 (毫秒)")] [InfoBox("聽覺刺激的反應時間視窗")]
+    public float audioResponseTime = 1000f;
 
-    public List<int> visualIDList = new();
-    public List<int> audioIDList = new();
-    public List<bool> visualResponseList = new();
-    public List<bool> audioResponseList = new();
-    public List<TrialResult> trialResults = new();
+    [LabelText("總反應時間 (毫秒)")] [InfoBox("超過此時間自動進入下一題")]
+    public float totalResponseTime = 2000f;
+
+    [TitleGroup("負向刺激素材")] [Required, AssetsOnly]
+    public List<AudioClip> negativeAudioClips;
+
+    [Required, AssetsOnly] public List<Sprite> negativeVisualSprites;
+
+    [TitleGroup("UI 組件")] [Required, SceneObjectsOnly]
+    public GameObject[] gridPlanes;
+
+    [Required, SceneObjectsOnly] public AudioSource audioSource;
+
+    [SceneObjectsOnly] public TMP_Text nText;
+
+    [SceneObjectsOnly] public GameObject restPanel;
+
+    [SceneObjectsOnly] public GameObject endPanel;
+
+    [TitleGroup("按鍵設定")] [LabelText("視覺反應鍵")]
+    public KeyCode visualKey = KeyCode.X;
+
+    [LabelText("聽覺反應鍵")] public KeyCode audioKey = KeyCode.Z;
+
+    [TitleGroup("遊戲狀態")] [ReadOnly, ShowInInspector]
+    private string gameStatus = "等待開始";
+
+    [ReadOnly, ShowInInspector, ProgressBar(0, "totalTrials")]
+    private int currentTrial = 0;
+
+    // 內部變數
+    private int totalTrials;
+    private List<int> visualIDList = new();
+    private List<int> audioIDList = new();
+    private List<bool> visualResponseList = new();
+    private List<bool> audioResponseList = new();
+    private List<TrialResult> trialResults = new();
 
     private List<float> visualAccuracyRecord = new();
     private List<float> audioAccuracyRecord = new();
     private List<int> nRecord = new();
 
-    public bool isVisualCheck, isAudioCheck;
-
     private int visualHit, visualMiss, visualFalseAlarm, visualCorrectRejection;
     private int audioHit, audioMiss, audioFalseAlarm, audioCorrectRejection;
-    private int currentAudioStimuli = 0, currentVisualStimuli = 0;
 
-    private List<Sprite> _stimuliSprites = new();
-    private List<AudioClip> _audioClipsStimuli = new();
-
-    public LineRenderer lineRenderer;
-    public LineRenderer lineRenderer2;
-    
-    public bool isTest = false;
+    // 外部觸發標記
+    private bool externalVisualTrigger = false;
+    private bool externalAudioTrigger = false;
 
     void Start()
     {
-        if (gridPlanes == null || gridPlanes.Length == 0 || audioSource == null)
-        {
-            Debug.LogError("請設定必要的元件！");
-            return;
-        }
-
-        lineRenderer.enabled = false;
-        lineRenderer2.enabled = false;
-
+        Debug.Log("🎮 N-Back 遊戲啟動");
+        if (!ValidateComponents()) return;
         StartCoroutine(MultiRoundGame());
     }
 
-    private void Init()
+    bool ValidateComponents()
     {
-        bool success = false;
-        totalTrials += n;
-
-        _stimuliSprites = stimuliSprites.ToList();
-        _audioClipsStimuli = audioClipsStimuli.ToList();
-
-        Shuffle(normalSprites);
-        Shuffle(stimuliSprites);
-
-        Shuffle(audioClipsStimuli);
-        Shuffle(audioClipsNormal);
-
-        for (int i = 0; i < 6; i++)
+        if (gridPlanes == null || gridPlanes.Length == 0)
         {
-            visualAllSprites.Add(normalSprites[0]);
-            visualAllSprites.Add(stimuliSprites[0]);
-
-            normalSprites.RemoveAt(0);
-            stimuliSprites.RemoveAt(0);
+            Debug.LogError("❌ 請設定 gridPlanes！");
+            gameStatus = "組件缺失";
+            return false;
         }
 
-        for (int i = 0; i < 6; i++)
+        if (audioSource == null)
         {
-            audioClips.Add(audioClipsNormal[0]);
-            audioClips.Add(audioClipsStimuli[0]);
-
-            audioClipsStimuli.RemoveAt(0);
-            audioClipsNormal.RemoveAt(0);
+            Debug.LogError("❌ 請設定 audioSource！");
+            gameStatus = "組件缺失";
+            return false;
         }
 
-        Shuffle(visualAllSprites);
-        Shuffle(audioClips);
-
-        while (!success)
+        if (negativeAudioClips == null || negativeAudioClips.Count == 0)
         {
-            visualResponseList.Clear();
-            audioResponseList.Clear();
-            visualIDList.Clear();
-            audioIDList.Clear();
+            Debug.LogError("❌ 請設定負向音訊素材！");
+            gameStatus = "素材缺失";
+            return false;
+        }
 
+        if (negativeVisualSprites == null || negativeVisualSprites.Count == 0)
+        {
+            Debug.LogError("❌ 請設定負向視覺素材！");
+            gameStatus = "素材缺失";
+            return false;
+        }
 
-            for (int i = 0; i < totalTrials; i++)
+        // ✅ 檢查音訊素材是否為 null
+        for (int i = 0; i < negativeAudioClips.Count; i++)
+        {
+            if (negativeAudioClips[i] == null)
             {
-                visualResponseList.Add(false);
-                audioResponseList.Add(false);
+                Debug.LogError($"❌ 音訊素材 [{i}] 為 null！");
+                gameStatus = "素材錯誤";
+                return false;
+            }
+        }
+
+        // ✅ 檢查視覺素材是否為 null
+        for (int i = 0; i < negativeVisualSprites.Count; i++)
+        {
+            if (negativeVisualSprites[i] == null)
+            {
+                Debug.LogError($"❌ 視覺素材 [{i}] 為 null！");
+                gameStatus = "素材錯誤";
+                return false;
+            }
+        }
+
+        Debug.Log("✅ 所有組件檢查通過");
+        Debug.Log($"📊 音訊素材數量: {negativeAudioClips.Count}");
+        Debug.Log($"📊 視覺素材數量: {negativeVisualSprites.Count}");
+        Debug.Log($"📊 格子數量: {gridPlanes.Length}");
+        
+        return true;
+    }
+
+    private void InitializeTrial()
+{
+    // ✅✅✅ 強制驗證版本標記
+    Debug.LogError("========================================");
+    Debug.LogError("🔴🔴🔴 使用 v3.0 FINAL 版本");
+    Debug.LogError("========================================");
+    
+    totalTrials = baseTrials + n;
+    visualResponseList.Clear();
+    audioResponseList.Clear();
+    visualIDList.Clear();
+    audioIDList.Clear();
+
+    Debug.Log($"📝 總試次: {totalTrials}, N={n}, 基礎: {baseTrials}");
+    Debug.Log($"需求 - 視覺: {visualTrials}, 聽覺: {audioTrials}, 雙重: {bothTrials}");
+
+    // 初始化所有為 false
+    for (int i = 0; i < totalTrials; i++)
+    {
+        visualResponseList.Add(false);
+        audioResponseList.Add(false);
+    }
+
+    // ✅ 強制檢查：前 n 個鎖定
+    Debug.LogError($"🔒🔒🔒 前 {n} 個試次將被強制鎖定為非刺激");
+    
+    // ✅ 立即驗證初始狀態
+    for (int i = 0; i < n; i++)
+    {
+        if (visualResponseList[i] || audioResponseList[i])
+        {
+            Debug.LogError($"❌❌❌ 初始化錯誤：試次 {i} 不是 false！");
+        }
+    }
+
+    int availableTrials = totalTrials - n;
+    int totalRequiredTrials = visualTrials + audioTrials + bothTrials;
+    
+    if (totalRequiredTrials > availableTrials)
+    {
+        Debug.LogError($"❌ 試次分配錯誤！需要 {totalRequiredTrials}，可用 {availableTrials}");
+        return;
+    }
+
+    bool success = false;
+    int attempts = 0;
+    int maxAttempts = 100;
+
+    while (!success && attempts < maxAttempts)
+    {
+        attempts++;
+        
+        // 重置
+        for (int i = 0; i < totalTrials; i++)
+        {
+            visualResponseList[i] = false;
+            audioResponseList[i] = false;
+        }
+
+        // ✅ 生成可用索引：明確只使用 n 到 totalTrials-1
+        List<int> availableIndices = new List<int>();
+        for (int i = n; i < totalTrials; i++)
+        {
+            availableIndices.Add(i);
+        }
+        
+        Debug.Log($"📋 嘗試 {attempts}:");
+        Debug.Log($"   可用索引: 從 {n} 到 {totalTrials-1}");
+        Debug.Log($"   可用數量: {availableIndices.Count}");
+        Debug.Log($"   第一個可用索引: {availableIndices[0]}");
+        Debug.Log($"   最後一個可用索引: {availableIndices[availableIndices.Count-1]}");
+        
+        Shuffle(availableIndices);
+
+        if (availableIndices.Count < totalRequiredTrials)
+        {
+            Debug.LogError($"❌ 索引不足！");
+            return;
+        }
+
+        // ✅ 分配刺激 - 明確記錄每個分配
+        int index = 0;
+        
+        Debug.Log($"開始分配刺激...");
+        
+        // 雙重刺激
+        for (int i = 0; i < bothTrials; i++)
+        {
+            int trialIndex = availableIndices[index];
+            Debug.Log($"  雙重 [{i}] -> 試次 {trialIndex}");
+            
+            // ✅ 檢查是否會分配到前 n 個
+            if (trialIndex < n)
+            {
+                Debug.LogError($"❌❌❌ 致命錯誤：試圖分配試次 {trialIndex} < {n}");
+                Debug.Break(); // 強制暫停 Unity
+            }
+            
+            visualResponseList[trialIndex] = true;
+            audioResponseList[trialIndex] = true;
+            index++;
+        }
+        
+        // 視覺刺激
+        for (int i = 0; i < visualTrials; i++)
+        {
+            int trialIndex = availableIndices[index];
+            Debug.Log($"  視覺 [{i}] -> 試次 {trialIndex}");
+            
+            if (trialIndex < n)
+            {
+                Debug.LogError($"❌❌❌ 致命錯誤：試圖分配試次 {trialIndex} < {n}");
+                Debug.Break();
+            }
+            
+            visualResponseList[trialIndex] = true;
+            index++;
+        }
+        
+        // 聽覺刺激
+        for (int i = 0; i < audioTrials; i++)
+        {
+            int trialIndex = availableIndices[index];
+            Debug.Log($"  聽覺 [{i}] -> 試次 {trialIndex}");
+            
+            if (trialIndex < n)
+            {
+                Debug.LogError($"❌❌❌ 致命錯誤：試圖分配試次 {trialIndex} < {n}");
+                Debug.Break();
+            }
+            
+            audioResponseList[trialIndex] = true;
+            index++;
+        }
+
+        // ✅ 立即驗證分配結果
+        Debug.Log("驗證分配結果...");
+        success = true;
+        
+        for (int i = 0; i < n; i++)
+        {
+            if (visualResponseList[i])
+            {
+                Debug.LogError($"❌❌❌ 驗證失敗：試次 {i} 有視覺刺激！");
+                success = false;
+            }
+            if (audioResponseList[i])
+            {
+                Debug.LogError($"❌❌❌ 驗證失敗：試次 {i} 有聽覺刺激！");
+                success = false;
+            }
+        }
+        
+        if (!success)
+        {
+            Debug.LogError("❌ 分配失敗，重試...");
+            Debug.Break(); // 強制暫停讓你看到錯誤
+            continue;
+        }
+
+        Debug.Log("✅ 分配驗證通過");
+
+        // 生成隨機 ID
+        visualIDList.Clear();
+        audioIDList.Clear();
+        for (int i = 0; i < totalTrials; i++)
+        {
+            visualIDList.Add(Random.Range(0, gridPlanes.Length));
+            audioIDList.Add(Random.Range(0, negativeAudioClips.Count));
+        }
+
+        // 修正非刺激試次的衝突
+        bool conflictExists;
+        int conflictAttempts = 0;
+        int maxConflictAttempts = 100;
+
+        do
+        {
+            conflictExists = false;
+            conflictAttempts++;
+
+            if (conflictAttempts > maxConflictAttempts)
+            {
+                Debug.LogWarning($"⚠️ 衝突修正失敗");
+                success = false;
+                break;
             }
 
-            // 分配 index
-            List<int> allIndices = new List<int>();
-            for (int i = 0; i < totalTrials; i++) allIndices.Add(i);
-            Shuffle(allIndices);
-
-            List<int> bothIndices = allIndices.GetRange(0, bothTrials);
-            List<int> remaining = allIndices.GetRange(bothTrials, allIndices.Count - bothTrials);
-            List<int> visualOnlyIndices = remaining.GetRange(0, visualTrials);
-            List<int> audioOnlyIndices = remaining.GetRange(visualTrials, audioTrials);
-
-            foreach (int i in bothIndices)
+            for (int i = n; i < totalTrials; i++)
             {
-                visualResponseList[i] = true;
-                audioResponseList[i] = true;
-            }
-
-            foreach (int i in visualOnlyIndices)
-                visualResponseList[i] = true;
-
-            foreach (int i in audioOnlyIndices)
-                audioResponseList[i] = true;
-
-            // 檢查是否所有 true 都能向前推 n
-            success = true;
-            for (int i = 0; i < totalTrials; i++)
-            {
-                if ((visualResponseList[i] || audioResponseList[i]) && i - n < 0)
+                if (!visualResponseList[i] && visualIDList[i] == visualIDList[i - n])
                 {
-                    success = false;
-                    break;
+                    conflictExists = true;
+                    visualIDList[i] = GetDifferentID(visualIDList[i - n], gridPlanes.Length);
+                }
+
+                if (!audioResponseList[i] && audioIDList[i] == audioIDList[i - n])
+                {
+                    conflictExists = true;
+                    audioIDList[i] = GetDifferentID(audioIDList[i - n], negativeAudioClips.Count);
                 }
             }
+        } while (conflictExists);
 
-            if (!success) continue;
+        if (!success) continue;
 
-            // 先給隨機 ID
-            for (int i = 0; i < totalTrials; i++)
+        // N-back 複製（在衝突修正後）
+        Debug.Log("開始 N-back 複製...");
+        for (int i = n; i < totalTrials; i++)
+        {
+            if (visualResponseList[i])
             {
-                visualIDList.Add(Random.Range(0, gridPlanes.Length));
-                audioIDList.Add(Random.Range(0, audioClips.Count));
+                visualIDList[i] = visualIDList[i - n];
+                Debug.Log($"  試次 {i} 視覺 <- 試次 {i-n}: ID={visualIDList[i]}");
             }
-
-            // N-back 往回複製
-            for (int i = 0; i < totalTrials; i++)
+            if (audioResponseList[i])
             {
-                if (visualResponseList[i] && i - n >= 0)
-                    visualIDList[i] = visualIDList[i - n];
-
-                if (audioResponseList[i] && i - n >= 0)
-                    audioIDList[i] = audioIDList[i - n];
+                audioIDList[i] = audioIDList[i - n];
+                Debug.Log($"  試次 {i} 聽覺 <- 試次 {i-n}: ID={audioIDList[i]}");
             }
-
-            // 檢查是否有重複
-
-            // 持續檢查直到沒有誤中 n-back 為止
-            bool conflictExists;
-
-            do
-            {
-                conflictExists = false;
-
-                for (int i = n; i < totalTrials; i++)
-                {
-                    // 視覺檢查
-                    if (!visualResponseList[i] && visualIDList[i] == visualIDList[i - n])
-                    {
-                        conflictExists = true;
-                        Debug.Log($"⚠️ 修正視覺 N-back 錯誤 at index {i} (ID: {visualIDList[i]})");
-
-                        int maxTry = 50;
-                        while (maxTry-- > 0)
-                        {
-                            int g = Random.Range(0, gridPlanes.Length);
-                            if (g != visualIDList[i - n])
-                            {
-                                visualIDList[i] = g;
-                                break;
-                            }
-                        }
-                    }
-
-                    // 聽覺檢查
-                    if (!audioResponseList[i] && audioIDList[i] == audioIDList[i - n])
-                    {
-                        conflictExists = true;
-                        Debug.Log($"⚠️ 修正聽覺 N-back 錯誤 at index {i} (ID: {audioIDList[i]})");
-
-                        int maxTry = 50;
-                        while (maxTry-- > 0)
-                        {
-                            int g = Random.Range(0, audioClips.Count);
-                            if (g != audioIDList[i - n])
-                            {
-                                audioIDList[i] = g;
-                                break;
-                            }
-                        }
-                    }
-                }
-            } while (conflictExists);
-
-
-            // ✅ 成功生成，印出 debug 表格
-            Debug.Log("✅ 成功配置 N-back 任務，以下是詳細配置：");
-
-            for (int i = 0; i < totalTrials; i++)
-            {
-                string type = (visualResponseList[i] && audioResponseList[i]) ? "Both" :
-                    (visualResponseList[i]) ? "Visual" :
-                    (audioResponseList[i]) ? "Audio" : "None";
-
-                Debug.Log($"[{i:D2}]  {type,-6} |  V-ID: {visualIDList[i]}  A-ID: {audioIDList[i]}");
-            }
-
-            break;
         }
+
+        break;
+    }
+
+    if (success)
+    {
+        Debug.Log($"✅✅✅ 配置完成（{attempts} 次嘗試）");
+        
+        // ✅ 最終驗證並顯示前幾個試次
+        Debug.LogError("========================================");
+        Debug.LogError("🔍 最終驗證 - 前 5 個試次：");
+        for (int i = 0; i < Mathf.Min(5, totalTrials); i++)
+        {
+            string msg = $"試次 {i}: 視覺={visualResponseList[i]}, 聽覺={audioResponseList[i]}";
+            if (i < n && (visualResponseList[i] || audioResponseList[i]))
+            {
+                Debug.LogError($"❌❌❌ {msg} <- 不應該有刺激！");
+            }
+            else
+            {
+                Debug.Log(msg);
+            }
+        }
+        Debug.LogError("========================================");
+        
+        ValidateTrialConfiguration();
+    }
+    else
+    {
+        Debug.LogError($"❌❌❌ 初始化完全失敗！");
+    }
+}
+
+    void ValidateTrialConfiguration()
+    {
+        Debug.Log("🔍 開始驗證試次配置...");
+        
+        // 檢查 1：前 n 個試次不應該是刺激
+        for (int i = 0; i < n; i++)
+        {
+            if (visualResponseList[i])
+                Debug.LogError($"❌ 試次 {i} 有視覺刺激（應該沒有）");
+            if (audioResponseList[i])
+                Debug.LogError($"❌ 試次 {i} 有聽覺刺激（應該沒有）");
+        }
+        
+        // 檢查 2：刺激試次的 n-back 正確性
+        for (int i = n; i < totalTrials; i++)
+        {
+            if (visualResponseList[i])
+            {
+                if (visualIDList[i] != visualIDList[i - n])
+                    Debug.LogError($"❌ 試次 {i} 視覺 n-back 錯誤");
+            }
+            
+            if (audioResponseList[i])
+            {
+                if (audioIDList[i] != audioIDList[i - n])
+                    Debug.LogError($"❌ 試次 {i} 聽覺 n-back 錯誤");
+            }
+        }
+        
+        // 檢查 3：非刺激試次不應該有 n-back 匹配
+        for (int i = n; i < totalTrials; i++)
+        {
+            if (!visualResponseList[i] && visualIDList[i] == visualIDList[i - n])
+                Debug.LogError($"❌ 試次 {i} 視覺非刺激但有 n-back 匹配");
+                
+            if (!audioResponseList[i] && audioIDList[i] == audioIDList[i - n])
+                Debug.LogError($"❌ 試次 {i} 聽覺非刺激但有 n-back 匹配");
+        }
+        
+        // 統計
+        int actualVisualStimuli = visualResponseList.Count(v => v);
+        int actualAudioStimuli = audioResponseList.Count(a => a);
+        Debug.Log($"📊 實際刺激數量 - 視覺: {actualVisualStimuli}, 聽覺: {actualAudioStimuli}");
+        Debug.Log("✅ 驗證完成");
+    }
+
+    int GetDifferentID(int current, int max)
+    {
+        if (max <= 1) return 0;
+
+        int newID;
+        int attempts = 0;
+        int maxAttempts = 50;
+
+        do
+        {
+            newID = Random.Range(0, max);
+            attempts++;
+
+            if (attempts > maxAttempts)
+            {
+                Debug.LogWarning($"⚠️ GetDifferentID 無法找到不同的 ID，返回遞增值");
+                return (current + 1) % max;
+            }
+        } while (newID == current);
+
+        return newID;
     }
 
     private IEnumerator MultiRoundGame()
     {
-        Init();
-
+        Debug.Log("🚀 開始多輪遊戲");
         int roundCount = isTest ? 1 : 3;
 
         for (int round = 0; round < roundCount; round++)
         {
-            yield return StartCoroutine(waitForGameStart());
+            gameStatus = $"第 {round + 1} 輪準備中";
+            Debug.Log($"⏳ {gameStatus}");
+
+            InitializeTrial();
+
+            Debug.Log($"⏰ 等待 {waitTime} 秒後開始");
+            yield return new WaitForSeconds(waitTime);
+
+            gameStatus = $"第 {round + 1} 輪進行中 (N={n})";
             Debug.Log($"▶️ 開始第 {round + 1} 輪，n = {n}");
+
             yield return StartCoroutine(GameLoop());
 
-            float visualStimuli = trialResults.Count(r => r.isVisualStimulus);
-            float audioStimuli = trialResults.Count(r => r.isAudioStimulus);
-            float visualHitCount = trialResults.Count(r => r.isVisualStimulus && r.visualCorrect);
-            float audioHitCount = trialResults.Count(r => r.isAudioStimulus && r.audioCorrect);
+            CalculateRoundAccuracy();
 
-            float visualAcc = visualStimuli > 0 ? visualHitCount / visualStimuli : 0f;
-            float audioAcc = audioStimuli > 0 ? audioHitCount / audioStimuli : 0f;
-
-            visualAccuracyRecord.Add(visualAcc);
-            audioAccuracyRecord.Add(audioAcc);
-            nRecord.Add(n);
-
-            Debug.Log($"🎯 視覺正確率：{visualAcc * 100f:F2}%");
-            Debug.Log($"🎧 聽覺正確率：{audioAcc * 100f:F2}%");
-
-            if ((visualAcc + audioAcc) / 2f >= 0.5f)
-                n = Mathf.Min(3, n + 1);
-            else
-                n = Mathf.Max(1, n - 1);
-            
-            totalTrials = 20 + n;
-
-            if (round < 2 && !isTest)
+            if (round < roundCount - 1)
             {
-                restPanel.SetActive(true);
-                Debug.Log("🛋️ 請休息，按下雙手 Trigger 繼續");
-                yield return StartCoroutine(WaitForBothHandsTrigger());
-                restPanel.SetActive(false);
+                if (restPanel != null) restPanel.SetActive(true);
+                gameStatus = "休息中";
+                Debug.Log("🛋️ 休息時間 120 秒");
+                yield return new WaitForSeconds(restTime);
+                if (restPanel != null) restPanel.SetActive(false);
             }
-            
-            
         }
 
-        Debug.Log("✅ 三輪測試完成結果：");
-        lineRenderer.enabled = true;
-        lineRenderer2.enabled = true;
+        gameStatus = "測試完成";
+        ShowFinalResults();
+    }
 
-        endPanel.SetActive(true);
+    void CalculateRoundAccuracy()
+    {
+        float visualStimuli = trialResults.Count(r => r.isVisualStimulus);
+        float audioStimuli = trialResults.Count(r => r.isAudioStimulus);
+        float visualHitCount = trialResults.Count(r => r.isVisualStimulus && r.visualCorrect);
+        float audioHitCount = trialResults.Count(r => r.isAudioStimulus && r.audioCorrect);
+
+        float visualAcc = visualStimuli > 0 ? visualHitCount / visualStimuli : 0f;
+        float audioAcc = audioStimuli > 0 ? audioHitCount / audioStimuli : 0f;
+
+        visualAccuracyRecord.Add(visualAcc);
+        audioAccuracyRecord.Add(audioAcc);
+        nRecord.Add(n);
+
+        Debug.Log($"🎯 視覺正確率：{visualAcc * 100f:F2}%");
+        Debug.Log($"🎧 聽覺正確率：{audioAcc * 100f:F2}%");
+
+        // 自適應調整 n 值
+        if ((visualAcc + audioAcc) / 2f >= 0.5f)
+            n = Mathf.Min(3, n + 1);
+        else
+            n = Mathf.Max(1, n - 1);
+    }
+
+    void ShowFinalResults()
+    {
+        if (endPanel != null) endPanel.SetActive(true);
+
+        Debug.Log("✅ 測試完成！最終結果：");
         for (int i = 0; i < visualAccuracyRecord.Count; i++)
         {
             Debug.Log(
-                $"📊 第{i + 1}輪：n = {nRecord[i]}, 視覺 {visualAccuracyRecord[i] * 100f:F2}%, 聽覺 {audioAccuracyRecord[i] * 100f:F2}%");
+                $"📊 第{i + 1}輪：n={nRecord[i]}, 視覺 {visualAccuracyRecord[i] * 100f:F2}%, 聽覺 {audioAccuracyRecord[i] * 100f:F2}%");
         }
 
         ExportTrialResultsToCSV();
     }
 
-    private IEnumerator WaitForBothHandsTrigger()
-    {
-        //InputDevice left = InputDevices.GetDeviceAtXRNode(XRNode.LeftHand);
-        //InputDevice right = InputDevices.GetDeviceAtXRNode(XRNode.RightHand);
-
-        //bool rightPressed = false;
-
-        //while (!Input.GetKeyDown(KeyCode.Space)) //(leftPressed && rightPressed)
-        //{
-            //left.TryGetFeatureValue(CommonUsages.triggerButton, out leftPressed);
-        //    right.TryGetFeatureValue(CommonUsages.triggerButton, out rightPressed);
-        //    yield return null;
-        //}
-
-        yield return new WaitForSeconds(120);
-        yield return null;
-    }
-
-    private IEnumerator waitForGameStart()
-    {
-        yield return new WaitForSeconds(waitTime);
-        yield return null;
-    }
-
-    public static void Shuffle<T>(List<T> list)
-    {
-        int n = list.Count;
-        for (int i = 0; i < n - 1; i++)
-        {
-            int j = UnityEngine.Random.Range(i, n);
-            (list[i], list[j]) = (list[j], list[i]);
-        }
-    }
-
     IEnumerator GameLoop()
     {
-        Debug.Log("🎮 遊戲開始！");
-        //trialResults.Clear();
+        Debug.Log($"🎮 開始遊戲迴圈，總試次: {totalTrials}");
         visualHit = visualMiss = visualFalseAlarm = visualCorrectRejection = 0;
         audioHit = audioMiss = audioFalseAlarm = audioCorrectRejection = 0;
 
-        int vistualStimuliIndex = 0, audioStimuliIndex = 0;
-        
-        nText.text = "N = " + n;
+        if (nText != null) nText.text = "N = " + n;
 
-        for (int i = 0; i < totalTrials; i++)
+        for (currentTrial = 0; currentTrial < totalTrials; currentTrial++)
         {
-            float interval = stimulusInterval[Random.Range(0, stimulusInterval.Length)];
-            int vID = visualIDList[i], aID = audioIDList[i];
+            Debug.Log($"▶ 試次 {currentTrial + 1}/{totalTrials}");
 
-            isVisualCheck = isAudioCheck = false;
+            int vID = visualIDList[currentTrial];
+            int aID = audioIDList[currentTrial];
 
+            // ✅ 驗證 ID 範圍
+            if (vID < 0 || vID >= gridPlanes.Length)
+            {
+                Debug.LogError($"❌ 視覺 ID 超出範圍: {vID}");
+                continue;
+            }
+            if (aID < 0 || aID >= negativeAudioClips.Count)
+            {
+                Debug.LogError($"❌ 音訊 ID 超出範圍: {aID}");
+                continue;
+            }
+
+            // 清空九宮格
             foreach (var plane in gridPlanes)
-                plane.GetComponent<Renderer>().material.SetTexture("_BaseMap", null);
-
-            bool isVisualOrFutureVisual =
-                visualResponseList[i] || (i + n < visualResponseList.Count && visualResponseList[i + n]);
-            Sprite currentSprite;
-
-            if (isVisualOrFutureVisual)
             {
-                if (this.totalVisualStimuli > currentVisualStimuli)
-                {
-                    currentSprite = stimuliSprites[vistualStimuliIndex];
-                    gridPlanes[vID].GetComponent<Renderer>().material
-                        .SetTexture("_BaseMap", stimuliSprites[vistualStimuliIndex].texture);
-                    currentVisualStimuli++;
-                }
-                else
-                {
-                    currentSprite = normalSprites[vistualStimuliIndex];
-                    gridPlanes[vID].GetComponent<Renderer>().material
-                        .SetTexture("_BaseMap", normalSprites[vistualStimuliIndex].texture);
-                }
+                if (plane != null)
+                    plane.GetComponent<Renderer>().material.SetTexture("_BaseMap", null);
+            }
+
+            // ✅ 顯示視覺刺激（直接使用 vID）
+            if (gridPlanes[vID] != null && negativeVisualSprites[vID] != null)
+            {
+                gridPlanes[vID].GetComponent<Renderer>().material
+                    .SetTexture("_BaseMap", negativeVisualSprites[vID].texture);
+                Debug.Log($"  視覺刺激: 格子 {vID}, 圖片 {vID}, 刺激={visualResponseList[currentTrial]}");
             }
             else
             {
-                int r = Random.Range(0, visualAllSprites.Count);
-
-                currentSprite = visualAllSprites[r];
-                gridPlanes[vID].GetComponent<Renderer>().material.SetTexture("_BaseMap", visualAllSprites[r].texture);
+                Debug.LogError($"❌ 視覺素材或格子為 null: vID={vID}");
             }
 
-            bool isAudioOrFutureAudio =
-                audioResponseList[i] || (i + n < audioResponseList.Count && audioResponseList[i + n]);
-
-            if (isAudioOrFutureAudio)
+            // ✅ 播放聽覺刺激（直接使用 aID）
+            if (negativeAudioClips[aID] != null)
             {
-                if (this.totalAudioStimuli > currentAudioStimuli)
-                {
-                    audioSource.clip = audioClipsStimuli[aID];
-                    currentAudioStimuli++;
-                }
-                else
-                {
-                    audioSource.clip = audioClipsNormal[aID];
-                }
+                audioSource.Stop(); // 停止前一個音效
+                audioSource.PlayOneShot(negativeAudioClips[aID]);
+                Debug.Log($"  聽覺刺激: 音訊 {aID}, 刺激={audioResponseList[currentTrial]}");
             }
             else
             {
-                audioSource.clip = audioClips[aID];
+                Debug.LogError($"❌ 音訊素材為 null: aID={aID}");
             }
 
-            audioSource.Play();
-
-            bool isAudioSimilar = _audioClipsStimuli.Contains(audioSource.clip);
-            bool isVisualSimilar = _stimuliSprites.Contains(currentSprite);
-
+            // ✅ 使用 Stopwatch 精確計時
             bool visualPressed = false, audioPressed = false;
             float visualRT = -1f, audioRT = -1f;
-            float timer = 0f;
+            
+            Stopwatch stopwatch = Stopwatch.StartNew();
+            
+            float visualResponseTimeSec = visualResponseTime / 1000f;
+            float audioResponseTimeSec = audioResponseTime / 1000f;
+            float totalResponseTimeSec = totalResponseTime / 1000f;
 
-            while (timer < interval)
+            bool visualWindowOpen = true, audioWindowOpen = true;
+
+            while (stopwatch.Elapsed.TotalSeconds < totalResponseTimeSec)
             {
-                if (!visualPressed && isVisualCheck)
+                float elapsedMs = (float)stopwatch.Elapsed.TotalMilliseconds;
+                
+                // 視覺反應（鍵盤或外部觸發）
+                if (visualWindowOpen && (Input.GetKeyDown(visualKey) || externalVisualTrigger))
                 {
                     visualPressed = true;
-                    visualRT = timer;
-                    isVisualCheck = false;
+                    visualRT = elapsedMs;
+                    visualWindowOpen = false;
+
+                    if (externalVisualTrigger)
+                    {
+                        Debug.Log($"  ✓ 視覺反應 (外部觸發): {visualRT:F2}ms");
+                        externalVisualTrigger = false;
+                    }
+                    else
+                    {
+                        Debug.Log($"  ✓ 視覺反應: {visualRT:F2}ms");
+                    }
                 }
 
-                if (!audioPressed && isAudioCheck)
+                // 聽覺反應（鍵盤或外部觸發）
+                if (audioWindowOpen && (Input.GetKeyDown(audioKey) || externalAudioTrigger))
                 {
                     audioPressed = true;
-                    audioRT = timer;
-                    isAudioCheck = false;
+                    audioRT = elapsedMs;
+                    audioWindowOpen = false;
+
+                    if (externalAudioTrigger)
+                    {
+                        Debug.Log($"  ✓ 聽覺反應 (外部觸發): {audioRT:F2}ms");
+                        externalAudioTrigger = false;
+                    }
+                    else
+                    {
+                        Debug.Log($"  ✓ 聽覺反應: {audioRT:F2}ms");
+                    }
                 }
 
-                timer += Time.deltaTime;
+                // 檢查反應視窗
+                if (visualWindowOpen && elapsedMs >= visualResponseTime)
+                {
+                    visualWindowOpen = false;
+                    Debug.Log($"  ⏰ 視覺反應視窗關閉 ({visualResponseTime}ms)");
+                }
+                    
+                if (audioWindowOpen && elapsedMs >= audioResponseTime)
+                {
+                    audioWindowOpen = false;
+                    Debug.Log($"  ⏰ 聽覺反應視窗關閉 ({audioResponseTime}ms)");
+                }
+
                 yield return null;
             }
 
-            TrialResult result = new TrialResult
-            {
-                trialIndex = i,
-                isVisualStimulus = visualResponseList[i],
-                isAudioStimulus = audioResponseList[i],
-                visualReactionTime = visualRT,
-                audioReactionTime = audioRT,
-                visualStimulusType = isVisualSimilar ? "負面" : "普通",
-                audioStimulusType = isAudioSimilar ? "負面" : "普通"
-            };
+            stopwatch.Stop();
 
-            if (visualResponseList[i])
-            {
-                if (visualPressed)
-                {
-                    result.visualCorrect = true;
-                    result.visualResultType = "Hit";
-                    visualHit++;
-                }
-                else
-                {
-                    result.visualCorrect = false;
-                    result.visualResultType = "Miss";
-                    visualMiss++;
-                }
-            }
-            else
-            {
-                if (visualPressed)
-                {
-                    result.visualCorrect = false;
-                    result.visualResultType = "FalseAlarm";
-                    visualFalseAlarm++;
-                }
-                else
-                {
-                    result.visualCorrect = true;
-                    result.visualResultType = "CorrectRejection";
-                    visualCorrectRejection++;
-                }
-            }
+            // 記錄結果
+            RecordTrialResult(currentTrial, visualPressed, audioPressed, visualRT, audioRT);
 
-            if (audioResponseList[i])
-            {
-                if (audioPressed)
-                {
-                    result.audioCorrect = true;
-                    result.audioResultType = "Hit";
-                    audioHit++;
-                }
-                else
-                {
-                    result.audioCorrect = false;
-                    result.audioResultType = "Miss";
-                    audioMiss++;
-                }
-            }
-            else
-            {
-                if (audioPressed)
-                {
-                    result.audioCorrect = false;
-                    result.audioResultType = "FalseAlarm";
-                    audioFalseAlarm++;
-                }
-                else
-                {
-                    result.audioCorrect = true;
-                    result.audioResultType = "CorrectRejection";
-                    audioCorrectRejection++;
-                }
-            }
-
-            trialResults.Add(result);
-
+            // 清空刺激
             foreach (var plane in gridPlanes)
-                plane.GetComponent<Renderer>().material.SetTexture("_BaseMap", null);
+            {
+                if (plane != null)
+                    plane.GetComponent<Renderer>().material.SetTexture("_BaseMap", null);
+            }
         }
 
+        Debug.Log("🏁 遊戲迴圈結束");
+        ShowRoundStatistics();
+    }
+
+    void RecordTrialResult(int trialIndex, bool visualPressed, bool audioPressed, float visualRT, float audioRT)
+    {
+        TrialResult result = new TrialResult
+        {
+            trialIndex = trialIndex,
+            nValue = n,
+            isVisualStimulus = visualResponseList[trialIndex],
+            isAudioStimulus = audioResponseList[trialIndex],
+            visualReactionTime = visualRT,
+            audioReactionTime = audioRT
+        };
+
+        // ✅ 驗證反應時間
+        if (visualPressed && visualRT <= 0)
+        {
+            Debug.LogWarning($"⚠️ 試次 {trialIndex}: 視覺反應但時間異常 ({visualRT}ms)");
+        }
+        
+        if (audioPressed && audioRT <= 0)
+        {
+            Debug.LogWarning($"⚠️ 試次 {trialIndex}: 聽覺反應但時間異常 ({audioRT}ms)");
+        }
+
+        // 視覺結果
+        if (visualResponseList[trialIndex])
+        {
+            if (visualPressed)
+            {
+                result.visualCorrect = true;
+                result.visualResultType = "Hit";
+                visualHit++;
+                Debug.Log($"  📊 視覺 Hit: {visualRT:F2}ms");
+            }
+            else
+            {
+                result.visualCorrect = false;
+                result.visualResultType = "Miss";
+                visualMiss++;
+            }
+        }
+        else
+        {
+            if (visualPressed)
+            {
+                result.visualCorrect = false;
+                result.visualResultType = "FalseAlarm";
+                visualFalseAlarm++;
+            }
+            else
+            {
+                result.visualCorrect = true;
+                result.visualResultType = "CorrectRejection";
+                visualCorrectRejection++;
+            }
+        }
+
+        // 聽覺結果
+        if (audioResponseList[trialIndex])
+        {
+            if (audioPressed)
+            {
+                result.audioCorrect = true;
+                result.audioResultType = "Hit";
+                audioHit++;
+                Debug.Log($"  📊 聽覺 Hit: {audioRT:F2}ms");
+            }
+            else
+            {
+                result.audioCorrect = false;
+                result.audioResultType = "Miss";
+                audioMiss++;
+            }
+        }
+        else
+        {
+            if (audioPressed)
+            {
+                result.audioCorrect = false;
+                result.audioResultType = "FalseAlarm";
+                audioFalseAlarm++;
+            }
+            else
+            {
+                result.audioCorrect = true;
+                result.audioResultType = "CorrectRejection";
+                audioCorrectRejection++;
+            }
+        }
+
+        trialResults.Add(result);
+    }
+
+    void ShowRoundStatistics()
+    {
         int actualVisualStimuli = trialResults.Count(r => r.isVisualStimulus);
         int actualAudioStimuli = trialResults.Count(r => r.isAudioStimulus);
 
-        // 正確率計算（只看 Hit 數）
         float visualAccuracy = actualVisualStimuli > 0 ? (float)visualHit / actualVisualStimuli : 0f;
         float audioAccuracy = actualAudioStimuli > 0 ? (float)audioHit / actualAudioStimuli : 0f;
 
-        Debug.Log("======= ✅ 遊戲結束！統計結果如下： =======");
-
-        Debug.Log(
-            $"📷 視覺 ➜ Hit: {visualHit}, Total Stimuli: {actualVisualStimuli}, Accuracy: {(visualAccuracy * 100f):F2}%");
-        Debug.Log(
-            $"🎧 聽覺 ➜ Hit: {audioHit}, Total Stimuli: {actualAudioStimuli}, Accuracy: {(audioAccuracy * 100f):F2}%");
-
-        int visualStimuliCount = trialResults.Count(r => r.visualStimulusType == "負面");
-        int visualNormalCount = trialResults.Count(r => r.visualStimulusType == "普通");
-        int audioStimuliCount = trialResults.Count(r => r.audioStimulusType == "負面");
-        int audioNormalCount = trialResults.Count(r => r.audioStimulusType == "普通");
-
-        Debug.Log("📊 題目類型統計：");
-        Debug.Log($"視覺 ➜ 負面: {visualStimuliCount}, 普通: {visualNormalCount}");
-        Debug.Log($"聽覺 ➜ 負面: {audioStimuliCount}, 普通: {audioNormalCount}");
+        Debug.Log("======= ✅ 本輪結束！統計結果： =======");
+        Debug.Log($"📷 視覺 ➜ Hit: {visualHit}, Miss: {visualMiss}, FA: {visualFalseAlarm}, CR: {visualCorrectRejection}");
+        Debug.Log($"📷 視覺 ➜ Total: {actualVisualStimuli}, Acc: {visualAccuracy * 100f:F2}%");
+        Debug.Log($"🎧 聽覺 ➜ Hit: {audioHit}, Miss: {audioMiss}, FA: {audioFalseAlarm}, CR: {audioCorrectRejection}");
+        Debug.Log($"🎧 聽覺 ➜ Total: {actualAudioStimuli}, Acc: {audioAccuracy * 100f:F2}%");
     }
 
-    public void SetVisualCheck(bool check)
+    public void TriggerVisualResponse()
     {
-        isVisualCheck = check;
+        if (gameStatus.Contains("進行中") && currentTrial < totalTrials)
+        {
+            externalVisualTrigger = true;
+            Debug.Log($"🔵 外部觸發視覺反應 (試次 {currentTrial + 1})");
+        }
+        else
+        {
+            Debug.LogWarning("⚠️ 無法觸發視覺反應：遊戲未在進行中");
+        }
     }
 
-    public void SetAudioCheck(bool check)
+    public void TriggerAudioResponse()
     {
-        isAudioCheck = check;
+        if (gameStatus.Contains("進行中") && currentTrial < totalTrials)
+        {
+            externalAudioTrigger = true;
+            Debug.Log($"🔴 外部觸發聽覺反應 (試次 {currentTrial + 1})");
+        }
+        else
+        {
+            Debug.LogWarning("⚠️ 無法觸發聽覺反應：遊戲未在進行中");
+        }
     }
 
     public void ExportTrialResultsToCSV()
     {
+        if (isTest)
+        {
+            Debug.Log("🧪 測試模式：不儲存 CSV 資料");
+            return;
+        }
+
+        string participantID = PlayerPrefs.GetString("ID", "Unknown");
+        string path;
+
 #if UNITY_ANDROID && !UNITY_EDITOR
-            string path =
- "/storage/emulated/0/Download/NBackResults_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".csv";
+        string downloadFolder = "/storage/emulated/0/Download/NbackTestData";
+        
+        if (!Directory.Exists(downloadFolder))
+        {
+            try
+            {
+                Directory.CreateDirectory(downloadFolder);
+                Debug.Log($"📁 建立資料夾: {downloadFolder}");
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"❌ 無法建立資料夾: {e.Message}");
+                downloadFolder = "/storage/emulated/0/Download";
+            }
+        }
+        
+        path = downloadFolder + "/NBackResults_" + participantID + "_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".csv";
 #else
-        string path = Application.dataPath + "/NBackResults_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + "-" + PlayerPrefs.GetString("ID") + ".csv";
+        string dataFolder = Application.dataPath + "/NbackTestData";
+
+        if (!Directory.Exists(dataFolder))
+        {
+            Directory.CreateDirectory(dataFolder);
+            Debug.Log($"📁 建立資料夾: {dataFolder}");
+        }
+
+        path = dataFolder + "/NBackResults_" + participantID + "_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".csv";
 #endif
 
         StringBuilder csv = new StringBuilder();
-        csv.AppendLine(
-            "trialIndex,isVisualStimulus,isAudioStimulus,visualCorrect,audioCorrect,visualReactionTime,audioReactionTime,visualResultType,audioResultType,visualStimulusType,audioStimulusType");
+        csv.AppendLine("trialIndex,nValue,isVisualStimulus,isAudioStimulus,visualCorrect,audioCorrect,visualReactionTime(ms),audioReactionTime(ms),visualResultType,audioResultType");
+
         foreach (var result in trialResults)
         {
             csv.AppendLine($"{result.trialIndex}," +
+                           $"{result.nValue}," +
                            $"{result.isVisualStimulus}," +
                            $"{result.isAudioStimulus}," +
                            $"{result.visualCorrect}," +
@@ -585,19 +899,27 @@ public class NBackGame : MonoBehaviour
                            $"{result.visualReactionTime}," +
                            $"{result.audioReactionTime}," +
                            $"{result.visualResultType}," +
-                           $"{result.audioResultType}," +
-                           $"{result.visualStimulusType}," +
-                           $"{result.audioStimulusType}");
+                           $"{result.audioResultType}");
         }
 
         try
         {
             File.WriteAllText(path, csv.ToString());
-            Debug.Log("✅ CSV 已儲存至: " + path);
+            Debug.Log($"✅ CSV 已儲存至: {path}");
+            Debug.Log($"👤 受測者 ID: {participantID}");
         }
         catch (Exception e)
         {
-            Debug.LogError("❌ 無法寫入CSV: " + e.Message);
+            Debug.LogError($"❌ 無法寫入CSV: {e.Message}");
+        }
+    }
+
+    public static void Shuffle<T>(List<T> list)
+    {
+        for (int i = 0; i < list.Count - 1; i++)
+        {
+            int j = Random.Range(i, list.Count);
+            (list[i], list[j]) = (list[j], list[i]);
         }
     }
 }

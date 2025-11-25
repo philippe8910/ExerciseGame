@@ -142,7 +142,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &41160550
 Transform:
   m_ObjectHideFlags: 0
@@ -764,7 +764,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &332756980
 Transform:
   m_ObjectHideFlags: 0
@@ -1051,7 +1051,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 6
+  m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 50, y: -30, z: 0}
 --- !u!114 &410087042
 MonoBehaviour:
@@ -1100,7 +1100,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &560979335
 Transform:
   m_ObjectHideFlags: 0
@@ -1231,8 +1231,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 680355566}
-  - component: {fileID: 680355565}
-  - component: {fileID: 680355567}
   - component: {fileID: 680355568}
   m_Layer: 0
   m_Name: System
@@ -1241,34 +1239,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &680355565
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 680355564}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 62b251bf016e2457b90c8d30c70a0804, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  n: 2
-  totalTrials: 20
-  stimulusInterval: 2
-  gridPlanes:
-  - {fileID: 1959100303}
-  - {fileID: 924491358}
-  - {fileID: 245167095}
-  - {fileID: 55140078}
-  - {fileID: 1988535129}
-  - {fileID: 702679993}
-  - {fileID: 733273477}
-  - {fileID: 1819490606}
-  - {fileID: 285853258}
-  stimulusColor: {fileID: 2100000, guid: 21ca8723c11d2d34abf1e9e595b0942a, type: 2}
-  defaultColor: {fileID: 2100000, guid: 88b3961b9a9bd064ebcc2f4cbf42faf0, type: 2}
-  forcedMatchCount: 5
 --- !u!4 &680355566
 Transform:
   m_ObjectHideFlags: 0
@@ -1282,32 +1252,8 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 12
+  m_RootOrder: 11
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &680355567
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 680355564}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3e7b3267ff07f4b1eaed773e128c0918, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  n: 1
-  totalTrials: 20
-  stimulusInterval: 2
-  audioSource: {fileID: 1979154491}
-  audioClips:
-  - {fileID: 8300000, guid: 2fed6f6a07ad24b29a11acb98fddea40, type: 3}
-  - {fileID: 8300000, guid: bfc4f3f26e49f49df9f5c460c4eda55d, type: 3}
-  - {fileID: 8300000, guid: 2250e130e1320496bb02fb4d2dfda17f, type: 3}
-  - {fileID: 8300000, guid: 6191d0f2e653843269eea36fc2f08b95, type: 3}
-  - {fileID: 8300000, guid: c1043771873654fbc81f9e33b3f4d3c8, type: 3}
-  - {fileID: 8300000, guid: dbf63886215fc4b6fb42d2fc67d982ee, type: 3}
-  forcedMatchCount: 5
 --- !u!114 &680355568
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1320,39 +1266,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c60cde3b3ee4445bb9ac7ec7307968f7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  restTime: 3
   waitTime: 5
+  isTest: 0
   n: 2
-  totalTrials: 20
-  stimulusInterval:
-  - 2
-  - 2.5
-  - 3
+  baseTrials: 20
   visualTrials: 4
   audioTrials: 4
   bothTrials: 2
-  totalVisualStimuli: 2
-  totalAudioStimuli: 2
-  gridPlanes:
-  - {fileID: 1959100303}
-  - {fileID: 924491358}
-  - {fileID: 245167095}
-  - {fileID: 55140078}
-  - {fileID: 1988535129}
-  - {fileID: 702679993}
-  - {fileID: 733273477}
-  - {fileID: 1819490606}
-  - {fileID: 285853258}
-  - {fileID: 332756979}
-  - {fileID: 809371389}
-  - {fileID: 1868723578}
-  - {fileID: 41160549}
-  - {fileID: 791777078}
-  - {fileID: 560979334}
-  - {fileID: 1173684688}
-  endPanel: {fileID: 506014471}
-  nText: {fileID: 905323139}
-  audioSource: {fileID: 1979154491}
-  audioClipsStimuli:
+  visualResponseTime: 1000
+  audioResponseTime: 500
+  totalResponseTime: 2000
+  negativeAudioClips:
   - {fileID: 8300000, guid: f65b0d8151b0a4c6abfbaa234d053695, type: 3}
   - {fileID: 8300000, guid: 130e6623a1bf54b46888688fb4565582, type: 3}
   - {fileID: 8300000, guid: 54c94e83e9e43435691cba383718298a, type: 3}
@@ -1386,31 +1311,7 @@ MonoBehaviour:
   - {fileID: 8300000, guid: 717944b64a8ee4a9cafffae9d84d6039, type: 3}
   - {fileID: 8300000, guid: 4079a8d8e4ef64aa68aa68ae9b7fa3b0, type: 3}
   - {fileID: 8300000, guid: 1ed36d651518644618bc6cf6aeb1f173, type: 3}
-  audioClipsNormal:
-  - {fileID: 8300000, guid: 448908c4a875541b5a96b609bf091247, type: 3}
-  - {fileID: 8300000, guid: 619d5bdc8952941b6b8a240fd09f4917, type: 3}
-  - {fileID: 8300000, guid: 1e89b17ced6e44622b06ae2763b3dab6, type: 3}
-  - {fileID: 8300000, guid: 81c1adb5c5c9c41a78b94b8de6b7cd72, type: 3}
-  - {fileID: 8300000, guid: 325b4b7c543d44804a9e7062af5eaec7, type: 3}
-  - {fileID: 8300000, guid: c3a340d4423e44919b4ae7dd5e614e90, type: 3}
-  - {fileID: 8300000, guid: a1daa931c7a544bf48eba9cc54d9ae2b, type: 3}
-  - {fileID: 8300000, guid: 93f2b25d09d0b4bd6a874325c2f94e22, type: 3}
-  - {fileID: 8300000, guid: 9f103ff06b1614a8982df39506b53a44, type: 3}
-  - {fileID: 8300000, guid: d9047dca44de94432bae8d47e1ed6d63, type: 3}
-  - {fileID: 8300000, guid: acf524dc744ad44c398d8121bb59b4eb, type: 3}
-  - {fileID: 8300000, guid: cc385bce041aa4a0cb35d4a3c893d34c, type: 3}
-  - {fileID: 8300000, guid: 77557aec240a54458a86d0a7b362817a, type: 3}
-  - {fileID: 8300000, guid: a5cd13818bebb4af49c087400e7fd111, type: 3}
-  - {fileID: 8300000, guid: 8f67affa788b44a2a9b13816ed0524bb, type: 3}
-  - {fileID: 8300000, guid: 3a88b9bca14e24233941fd4290e4eaee, type: 3}
-  - {fileID: 8300000, guid: 73ab0062c026b4ad2bdec9f168670ecb, type: 3}
-  - {fileID: 8300000, guid: d37efc4df393f46f091c2bd3d9ec96f9, type: 3}
-  - {fileID: 8300000, guid: 21fd0390eabaf4b8c87c1cbd861261a6, type: 3}
-  - {fileID: 8300000, guid: 688b0d4e2332d4974803c12ad1bfe653, type: 3}
-  - {fileID: 8300000, guid: f141b8c84c32c44d5afecd672d26e9e4, type: 3}
-  - {fileID: 8300000, guid: 18b1b6ea1409b46f2b80447e3cdf371d, type: 3}
-  audioClips: []
-  stimuliSprites:
+  negativeVisualSprites:
   - {fileID: 21300000, guid: 34ccd7ba3a198471eb4e9d6f3c229f03, type: 3}
   - {fileID: 21300000, guid: a0c565bbbfa2c4e3bb08ab470b71b6d0, type: 3}
   - {fileID: 21300000, guid: 6a9e29b06a47e4666bf747db7cb11292, type: 3}
@@ -1444,43 +1345,22 @@ MonoBehaviour:
   - {fileID: 21300000, guid: c78a90ee837cd44f6aa659939f49c61e, type: 3}
   - {fileID: 21300000, guid: cb0299090d16c4ba18adad329e45e82a, type: 3}
   - {fileID: 21300000, guid: fc0fe98f1824c49dbb0a3c732d03762a, type: 3}
-  normalSprites:
-  - {fileID: 21300000, guid: 9f8122c5f95b949bf992658fb152a577, type: 3}
-  - {fileID: 21300000, guid: e131f72eed32d428ea98c9fbea45a481, type: 3}
-  - {fileID: 21300000, guid: 6ec87ba3991ed45af9be8f61c7b1f720, type: 3}
-  - {fileID: 21300000, guid: 728e60ab851d442c0bbb2e55c5388aeb, type: 3}
-  - {fileID: 21300000, guid: 3b9339b75fc7f481da33ccf4bde14ac0, type: 3}
-  - {fileID: 21300000, guid: 43b74b5f8b9aa4ac88423d7a744ecad2, type: 3}
-  - {fileID: 21300000, guid: 8db7ed970a24d460f9ce5f93e4dc9d65, type: 3}
-  - {fileID: 21300000, guid: 0b38173d7c9584c4c80db4adf110a4e4, type: 3}
-  - {fileID: 21300000, guid: 8e97ce711200b422ba28ccd28ddad4b6, type: 3}
-  - {fileID: 21300000, guid: 0a16926fc90d0469c9a6620e01fc9ec3, type: 3}
-  - {fileID: 21300000, guid: 1f2be5f33e1854e8fae06aff0cdf32c7, type: 3}
-  - {fileID: 21300000, guid: 89f511d83e33240ad8b76ca953bcc5bf, type: 3}
-  - {fileID: 21300000, guid: b1fc549ddb9b9416b9e66bfd2e3c5cc9, type: 3}
-  - {fileID: 21300000, guid: 5ea956dd47ee444f089ca97ed346d11a, type: 3}
-  - {fileID: 21300000, guid: 212e358f327ef41f8877c304f78e72c2, type: 3}
-  - {fileID: 21300000, guid: 26a1ce7b8d3314d26b6be15375ba80c1, type: 3}
-  - {fileID: 21300000, guid: 9c4d6d86ccad64dc899ea22541c15a8b, type: 3}
-  - {fileID: 21300000, guid: ee6c4980c87f84989877ba8a68bf252c, type: 3}
-  - {fileID: 21300000, guid: 0c2b0a861972e45579efe4f62e4dc59f, type: 3}
-  - {fileID: 21300000, guid: 5f616e88256794952acc77f4dd591613, type: 3}
-  - {fileID: 21300000, guid: 2f890ba39edb045f7852076618c2116b, type: 3}
-  - {fileID: 21300000, guid: 862c245adcc2049fea1992f7402185c2, type: 3}
-  visualAllSprites: []
+  gridPlanes:
+  - {fileID: 1959100303}
+  - {fileID: 924491358}
+  - {fileID: 245167095}
+  - {fileID: 55140078}
+  - {fileID: 1988535129}
+  - {fileID: 702679993}
+  - {fileID: 733273477}
+  - {fileID: 1819490606}
+  - {fileID: 285853258}
+  audioSource: {fileID: 1979154491}
+  nText: {fileID: 905323139}
+  restPanel: {fileID: 759972672}
+  endPanel: {fileID: 506014471}
   visualKey: 32
   audioKey: 122
-  restPanel: {fileID: 759972672}
-  visualIDList: 
-  audioIDList: 
-  visualResponseList: 
-  audioResponseList: 
-  trialResults: []
-  isVisualCheck: 0
-  isAudioCheck: 0
-  lineRenderer: {fileID: 1110891865}
-  lineRenderer2: {fileID: 988580355}
-  isTest: 0
 --- !u!1 &702679993
 GameObject:
   m_ObjectHideFlags: 0
@@ -1940,7 +1820,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 0
+  m_RootOrder: 12
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &791777078
 GameObject:
@@ -1960,7 +1840,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &791777079
 Transform:
   m_ObjectHideFlags: 0
@@ -2066,7 +1946,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &809371390
 Transform:
   m_ObjectHideFlags: 0
@@ -2201,7 +2081,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 7
+  m_RootOrder: 3
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &849377460
 GameObject:
@@ -2232,7 +2112,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 1
+  m_RootOrder: 7
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &905323138
 GameObject:
@@ -2403,7 +2283,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -4.34, y: 2.33}
+  m_AnchoredPosition: {x: -0.45, y: 4.14}
   m_SizeDelta: {x: 20, y: 5}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &924491358
@@ -2709,7 +2589,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 9
+  m_RootOrder: 6
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &988580351
 GameObject:
@@ -4077,7 +3957,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1173684689
 Transform:
   m_ObjectHideFlags: 0
@@ -4441,7 +4321,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 2
+  m_RootOrder: 4
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1482448277
 GameObject:
@@ -4474,7 +4354,7 @@ Transform:
   - {fileID: 1896282905}
   - {fileID: 394893873}
   m_Father: {fileID: 0}
-  m_RootOrder: 8
+  m_RootOrder: 5
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1790864438
 GameObject:
@@ -4505,7 +4385,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 3
+  m_RootOrder: 1
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1819490606
 GameObject:
@@ -4658,7 +4538,7 @@ Transform:
   - {fileID: 560979335}
   - {fileID: 1173684689}
   m_Father: {fileID: 0}
-  m_RootOrder: 11
+  m_RootOrder: 9
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1868723578
 GameObject:
@@ -4678,7 +4558,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1868723579
 Transform:
   m_ObjectHideFlags: 0
@@ -4997,7 +4877,7 @@ Light:
   m_BounceIntensity: 0.59
   m_ColorTemperature: 6570
   m_UseColorTemperature: 0
-  m_BoundingSphereOverride: {x: 6.54e-43, y: 1.61e-43, z: 0, w: 380.06323}
+  m_BoundingSphereOverride: {x: 0, y: 0, z: 0, w: 0}
   m_UseBoundingSphereOverride: 0
   m_UseViewFrustumForShadowCasterCull: 1
   m_ShadowRadius: 0
@@ -5015,7 +4895,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 4
+  m_RootOrder: 10
   m_LocalEulerAnglesHint: {x: 101.55301, y: 0, z: 0}
 --- !u!1 &1896282901
 GameObject:
@@ -5354,7 +5234,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 5
+  m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1984732886
 PrefabInstance:
@@ -5367,7 +5247,7 @@ PrefabInstance:
     - target: {fileID: -8679921383154817045, guid: 9118500b0abd44047b78e30d99248d9f,
         type: 3}
       propertyPath: m_RootOrder
-      value: 10
+      value: 8
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 9118500b0abd44047b78e30d99248d9f,
         type: 3}
@@ -5497,7 +5377,7 @@ PrefabInstance:
     - target: {fileID: -2093772787462966335, guid: 9118500b0abd44047b78e30d99248d9f,
         type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0.135
+      value: 0.276
       objectReference: {fileID: 0}
     - target: {fileID: -1599826595754709761, guid: 9118500b0abd44047b78e30d99248d9f,
         type: 3}
@@ -5522,7 +5402,7 @@ PrefabInstance:
     - target: {fileID: 4306643203051859313, guid: 9118500b0abd44047b78e30d99248d9f,
         type: 3}
       propertyPath: m_LocalPosition.x
-      value: -0.143
+      value: -0.266
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -5637,8 +5517,8 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 680355568}
         m_TargetAssemblyTypeName: NBackGame, Assembly-CSharp
-        m_MethodName: SetAudioCheck
-        m_Mode: 6
+        m_MethodName: TriggerAudioResponse
+        m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
@@ -5699,8 +5579,8 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 680355568}
         m_TargetAssemblyTypeName: NBackGame, Assembly-CSharp
-        m_MethodName: SetVisualCheck
-        m_Mode: 6
+        m_MethodName: TriggerVisualResponse
+        m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine

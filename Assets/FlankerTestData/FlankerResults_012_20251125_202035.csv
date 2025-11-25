@@ -1,0 +1,14 @@
+Index,Letter,MidColor,OtherColor,IsNegative,IsCorrect,ResponseTime(s),ColorIsSame
+0,>>>>>>>>>,Green,Red,True,False,2.000,False
+1,>>>>>>>>>,Green,Green,True,False,2.000,True
+2,>>>><>>>>,Red,Green,False,False,2.000,False
+3,>>>>>>>>>,Red,Green,True,False,2.000,False
+4,>>>><>>>>,Green,Red,False,False,2.000,False
+5,>>>><>>>>,Green,Green,False,False,2.000,True
+6,>>>><>>>>,Red,Red,False,False,2.000,True
+7,>>>>>>>>>,Red,Red,True,False,2.000,True
+
+總題數,8
+正確題數,0
+正確率,0.00%
+平均反應時間（僅計算正確題）,0.000
