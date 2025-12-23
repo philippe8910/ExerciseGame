@@ -11,11 +11,23 @@ using Random = UnityEngine.Random;
 
 public class EmotionalFlankerTaskSystem : MonoBehaviour
 {
+    public enum TargetDirection { Left, Right }
+    public enum Congruency { Congruent, Incongruent }
+    public enum EmotionType { Neutral, Negative }
+
     [TitleGroup("Flanker 任務資料")]
     [ReadOnly, ShowInInspector]
     public List<FlankerTaskData> currentData = new List<FlankerTaskData>();
+    
+    [TitleGroup("圖片資源")]
+    [LabelText("中性圖片")]
+    public List<Sprite> neutralImages;
+    [LabelText("負向圖片")]
+    public List<Sprite> negativeImages;
 
     [TitleGroup("UI 組件")]
+    [Required, SceneObjectsOnly]
+    public UnityEngine.UI.Image emotionImageDisplay; // 新增圖片顯示組件
     [Required, SceneObjectsOnly]
     public GameObject endPanel;
     
@@ -32,14 +44,14 @@ public class EmotionalFlankerTaskSystem : MonoBehaviour
     public TMP_Text bottomLetter;
 
     [TitleGroup("顏色設定")]
-    public Color redColor = Color.red;
-    public Color greenColor = Color.green;
+    public Color arrowColor = Color.blue; // 統一藍色箭頭
 
     [TitleGroup("時間設定")]
-    [LabelText("刺激顯示時間 (毫秒)")]
-    [InfoBox("刺激在螢幕上顯示的時間")]
-    [MinValue(0)]
+    [LabelText("測試階段刺激顯示時間 (毫秒)")] // 從文字推測，也許需要區分？暫時保留單一設定，或者改名更好理解
     public float stimulusDisplayTime = 500f;
+    
+    [LabelText("情緒圖片顯示時間 (毫秒)")]
+    public float emotionalImageTime = 1000f; // 假設值，原本代碼沒寫，通用做法
     
     [LabelText("反應時間限制 (毫秒)")]
     [InfoBox("受測者可以反應的時間視窗")]
@@ -127,6 +139,12 @@ public class EmotionalFlankerTaskSystem : MonoBehaviour
             gameStatus = "組件缺失";
             isValid = false;
         }
+        
+        if (emotionImageDisplay == null)
+        {
+             // 暫時設為警告，避免舊場景報錯
+             systemText.text += "⚠️ emotionImageDisplay 未綁定 (若需要顯示情緒圖請綁定)\n";
+        }
 
         if (isValid)
         {
@@ -149,51 +167,95 @@ public class EmotionalFlankerTaskSystem : MonoBehaviour
         yield return StartCoroutine(waitForGameStart());
 
         gameStatus = "進行中";
-        totalTrials = currentData.Count;
+        // totalTrials = currentData.Count; // Init 中已設定
         Debug.Log($"🎮 開始 Flanker 任務，總題數: {totalTrials}");
-        Debug.Log($"⚙️ 刺激顯示時間: {stimulusDisplayTime}ms, 反應時間限制: {responseTimeLimit}ms, 試次間隔: {timeBetweenTrials}s");
         currentTrialIndex = 0;
+        
+        // 隱藏圖片與文字
+        if (emotionImageDisplay != null) emotionImageDisplay.gameObject.SetActive(false);
+        middleLetter.text = "";
+        upperLetter.text = "";
+        bottomLetter.text = "";
 
-        foreach (var data in currentData)
+        for (int i = 0; i < currentData.Count; i++)
         {
+            var data = currentData[i];
+            
+            // --- 階段/區塊休息判斷 ---
+            // 練習結束 (32題)
+            if (i == 32)
+            {
+                Debug.Log("⏸ 練習階段結束，進入正式測驗");
+                systemText.text = "練習結束。請按任一鍵開始正式測驗。"; // 簡單示意，實際可能需要 UI
+                yield return new WaitForSeconds(2.0f); // 暫停一下
+                systemText.text = ""; // 清空
+            }
+            
+            // 正式階段 Block 休息 (每 96 題，從第 32 題後開始算)
+            // 32 + 96 = 128, 32 + 192 = 224, ...
+            if (i > 32 && (i - 32) % 96 == 0)
+            {
+                 Debug.Log($"⏸ Block 休息 (已完成 {i} 題)");
+                 systemText.text = "休息時間。請按任一鍵繼續。";
+                 yield return new WaitForSeconds(2.0f);
+                 systemText.text = "";
+            }
+
             if (middleLetter == null || upperLetter == null || bottomLetter == null)
                 yield break;
 
-            Debug.Log($"▶ 試次 {currentTrialIndex + 1}/{totalTrials}");
+            Debug.Log($"▶ 試次 {currentTrialIndex + 1}/{totalTrials} ({(data.isPractice ? "練習" : "正式")})");
 
-            // 顯示注視點
+            // 1. 顯示注視點 (+)
             middleLetter.text = "+";
+            middleLetter.color = Color.black; // 注視點黑色
             upperLetter.text = "";
             bottomLetter.text = "";
+            if (emotionImageDisplay != null) emotionImageDisplay.gameObject.SetActive(false);
 
             yield return new WaitForSeconds(timeBetweenTrials);
 
-            // 顯示刺激
-            middleLetter.color = data.midColor;
-            upperLetter.color = data.OtherColor;
-            bottomLetter.color = data.OtherColor;
+            // 2. 顯示情緒圖片 (如果有)
+            middleLetter.text = ""; // 清除注視點
+            if (data.emotionImage != null && emotionImageDisplay != null)
+            {
+                emotionImageDisplay.sprite = data.emotionImage;
+                emotionImageDisplay.gameObject.SetActive(true);
+            }
+            // 圖片顯示時間
+            yield return new WaitForSeconds(emotionalImageTime / 1000f);
+            
+            // 關閉圖片
+            if (emotionImageDisplay != null) emotionImageDisplay.gameObject.SetActive(false);
 
-            middleLetter.text = data.currentLetter;
-            upperLetter.text = data.currentLetter;
-            bottomLetter.text = data.currentLetter;
+            // 3. 顯示刺激 (箭頭)
+            middleLetter.color = arrowColor; // All Blue
+            upperLetter.color = arrowColor; // All Blue
+            bottomLetter.color = arrowColor; // All Blue
 
-            // ✅ 關鍵修正：在刺激顯示的同時開始計時
+            middleLetter.text = data.stimulusString;
+            upperLetter.text = data.stimulusString;
+            bottomLetter.text = data.stimulusString;
+
+            // 開始計時
             float startTime = Time.time;
-
-            Debug.Log($"  刺激: {data.currentLetter}, 中間顏色: {ColorToString(data.midColor)}, 旁邊顏色: {ColorToString(data.OtherColor)}, 負向: {data.isNegative}");
+            
+            string congStr = data.congruency == Congruency.Congruent ? "一致" : "不一致";
+            string dirStr = data.targetDirection == TargetDirection.Left ? "左" : "右";
+            Debug.Log($"  刺激: {data.stimulusString} ({congStr}/{dirStr}), 情緒: {data.emotion}");
 
             // 計算時間參數
-            float stimulusDisplayTimeSec = stimulusDisplayTime / 1000f;
+            float stimulusDisplayTimeSec = data.stimulusDuration; // 使用資料中的設定
             float responseTimeLimitSec = responseTimeLimit / 1000f;
             float totalResponseWindow = stimulusDisplayTimeSec + responseTimeLimitSec;
 
             bool responded = false;
             bool stimulusCleared = false;
 
-            // ✅ 在整個反應視窗內檢測反應（包含刺激顯示期間）
+            // 反應視窗
             while (Time.time - startTime < totalResponseWindow)
             {
-                // 刺激顯示時間結束後才清空畫面
+                // 刺激顯示時間結束後清空畫面 (但繼續等待反應)
                 if (!stimulusCleared && Time.time - startTime >= stimulusDisplayTimeSec)
                 {
                     middleLetter.text = "";
@@ -205,73 +267,54 @@ public class EmotionalFlankerTaskSystem : MonoBehaviour
                 bool leftUp = externalLeftTrigger;
                 bool rightUp = externalRightTrigger;
 
-                // 雙手同時觸發 = 錯誤
-                if (leftUp && rightUp)
+                if (leftUp || rightUp)
                 {
                     data.responseTime = Time.time - startTime;
-                    data.isCorrect = false;
                     responded = true;
-                    Debug.Log($"  ✗ 反應 (外部觸發 - 雙手): {data.responseTime:F3}s - 錯誤");
+                    
+                    // 判斷正確性
+                    // 目標向左 -> 左手觸發為正確
+                    // 目標向右 -> 右手觸發為正確
+                    bool isLeftTarget = data.targetDirection == TargetDirection.Left;
+                    bool isRightTarget = data.targetDirection == TargetDirection.Right; // Should be true if not Left
+
+                    // 避免雙手同時按
+                    if (leftUp && rightUp)
+                    {
+                         data.isCorrect = false;
+                         Debug.Log($"  ✗ 雙手同時按 - 錯誤");
+                    }
+                    else if (isLeftTarget && leftUp)
+                    {
+                        data.isCorrect = true;
+                        Debug.Log($"  ✓ 左手反應 - 正確");
+                    }
+                    else if (isRightTarget && rightUp)
+                    {
+                        data.isCorrect = true;
+                        Debug.Log($"  ✓ 右手反應 - 正確");
+                    }
+                    else
+                    {
+                        data.isCorrect = false;
+                        Debug.Log($"  ✗ 錯誤反應 (L:{leftUp} R:{rightUp} Target:{data.targetDirection})");
+                    }
+                    
                     externalLeftTrigger = false;
                     externalRightTrigger = false;
-                    break;
-                }
-
-                // 右手觸發且中間是綠色 = 正確
-                if (rightUp && !leftUp && data.midColor == Color.green)
-                {
-                    data.responseTime = Time.time - startTime;
-                    data.isCorrect = true;
-                    responded = true;
-                    Debug.Log($"  ✓ 反應 (外部觸發 - 右手): {data.responseTime:F3}s - 正確");
-                    externalRightTrigger = false;
-                    break;
-                }
-
-                // 左手觸發且中間是紅色 = 正確
-                if (leftUp && !rightUp && data.midColor == Color.red)
-                {
-                    data.responseTime = Time.time - startTime;
-                    data.isCorrect = true;
-                    responded = true;
-                    Debug.Log($"  ✓ 反應 (外部觸發 - 左手): {data.responseTime:F3}s - 正確");
-                    externalLeftTrigger = false;
-                    break;
-                }
-
-                // 錯誤反應（右手但是紅色）
-                if (rightUp && !leftUp && data.midColor == Color.red)
-                {
-                    data.responseTime = Time.time - startTime;
-                    data.isCorrect = false;
-                    responded = true;
-                    Debug.Log($"  ✗ 反應 (外部觸發 - 右手/紅色): {data.responseTime:F3}s - 錯誤");
-                    externalRightTrigger = false;
-                    break;
-                }
-
-                // 錯誤反應（左手但是綠色）
-                if (leftUp && !rightUp && data.midColor == Color.green)
-                {
-                    data.responseTime = Time.time - startTime;
-                    data.isCorrect = false;
-                    responded = true;
-                    Debug.Log($"  ✗ 反應 (外部觸發 - 左手/綠色): {data.responseTime:F3}s - 錯誤");
-                    externalLeftTrigger = false;
                     break;
                 }
 
                 yield return null;
             }
 
-            // 沒有反應 = 超時
+            // 超時
             if (!responded)
             {
                 data.isCorrect = false;
-                data.responseTime = totalResponseWindow; // ✅ 修正：記錄完整的反應視窗時間
-                Debug.Log($"  ⏱ 超時: {data.responseTime:F3}s - 未反應");
+                data.responseTime = totalResponseWindow;
+                Debug.Log($"  ⏱ 超時 - 未反應");
                 
-                // 確保刺激已清空
                 if (!stimulusCleared)
                 {
                     middleLetter.text = "";
@@ -280,14 +323,8 @@ public class EmotionalFlankerTaskSystem : MonoBehaviour
                 }
             }
 
-            // 重置外部觸發標記
             externalLeftTrigger = false;
             externalRightTrigger = false;
-
-            // 記錄顏色是否相同
-            data.colorIsSame = (data.midColor == data.OtherColor);
-
-            middleLetter.color = Color.white;
             currentTrialIndex++;
         }
 
@@ -361,91 +398,93 @@ public class EmotionalFlankerTaskSystem : MonoBehaviour
     {
         currentData.Clear();
         
-        /*
-        "分屍", "強姦", "屠殺", "凌虐", "自焚", "崩潰", "暴躁", "上吊", "欺騙", "變態",
-                    "憤怒", "亂倫", "血腥", "暴虐", "溺斃", "狠毒", "砍頭", "詛咒", "發怒", "猥褻",
-                    "畜生", "怒罵", "殘忍", "驚慄", "咆哮", "悲慟", "喪命", "哭泣", "激怒", "挑釁",
-                    "傷心", "憎惡", "恐怖", "破產", "悲憤", "憎恨", "悲痛", "焦躁", "淫蕩", "焦慮",
-                    "雜交", "瘟疫", "陰險", "悲傷", "野蠻", "恥辱", "悽慘", "瘋癲", "反感", "骯髒",
-                    "敗類", "厭煩", "焦急", "喪事", "心煩", "卑鄙", "出殯", "噁心", "罪孽", "惡劣",
-                    "下蠱", "災禍", "偏見", "笨蛋", "騙子", "邪惡", "夭折", "虛偽", "厭世", "刻薄",
-                    "狂傲", "沮喪", "絕望", "貪婪", "淒涼", "悲哀", "卑劣", "陪葬", "苦惱", "嫌惡",
-                    "錯亂", "畸形", "自卑", "斷氣", "殘廢", "諂媚", "白痴", "罪惡", "短命", "無能",
-                    "憂傷", "窮困", "輕蔑", "墮落", "憂慮", "蔑視", "醜陋", "膽小", "病態", "腐敗",
-                    "去勢", "膽怯", "哀悼", "頹廢", "貧乏", "軟弱", "意圖", "懶惰",
-                    
-                    "空地", "默想", "冥想", "段落", "概要", "底下", "前言", "取向", "選取", "字形",
-                                "厚度", "句子", "配套", "用語", "檢閱", "思量", "屬性", "歸類", "由來", "摘要",
-                                "主義", "沿途", "額外", "比喻", "時程", "循環", "通往", "預先", "要件", "收取",
-                                "調節", "隨身", "見解", "演繹", "抽象", "心智", "傾向", "抽取", "考察", "起點",
-                                "緣故", "提取", "交替", "回顧", "聲稱", "伸直", "換取", "擺設", "調頻", "假定",
-                                "慰藉", "抽樣", "清高", "備用", "推測", "知覺", "虛擬", "伴隨", "注重", "頭腦",
-                                "體積", "推論", "商議", "乾燥", "轉速", "隨機", "察覺", "散佈", "評價", "轉彎",
-                                "務必", "時髦", "斷定", "揣測", "華麗", "上流",
-        */
+        // --- 1. 定義基本條件 ---
+        // 方向 x 一致性 -> 4種組合
+        // 1. Target Left, Congruent: <<<<<
+        // 2. Target Left, Incongruent: >><>> 
+        // 3. Target Right, Congruent: >>>>>
+        // 4. Target Right, Incongruent: <<><<
+        
+        // 修正符號定義：
+        // Congruent Left: <<<<< (全左)
+        // Congruent Right: >>>>> (全右)
+        // Incongruent Left (Target Middle Left): >><>> (旁邊右，中間左? 題目說 "中間相反：>><>>" -> 這看起來是中間左，旁邊右)
+        // Incongruent Right (Target Middle Right): <<><< (旁邊左，中間右)
 
-        List<string> negativeLatter = new List<string>
+        var conditions = new List<(TargetDirection dir, Congruency cong, string stimuli)>
         {
-            ">>>>>>>>>",">>>>>>>>>",">>>>>>>>>",">>>>>>>>>",">>>>>>>>>",">>>>>>>>>",">>>>>>>>>",">>>>>>>>>",">>>>>>>>>",">>>>>>>>>"
+            (TargetDirection.Left, Congruency.Congruent, "<<<<<"),
+            (TargetDirection.Left, Congruency.Incongruent, ">><>>"),
+            (TargetDirection.Right, Congruency.Congruent, ">>>>>"),
+            (TargetDirection.Right, Congruency.Incongruent, "<<><<") 
         };
 
-        List<string> neutralLatter = new List<string>
-        {
-            ">>>><>>>>",">>>><>>>>",">>>><>>>>",">>>><>>>>",">>>><>>>>",">>>><>>>>",">>>><>>>>",">>>><>>>>",">>>><>>>>",">>>><>>>>"
-        };
-
-        if (!isTest)
-        {
-            neutralLatter = neutralLatter.Take(30).ToList();
-            negativeLatter = negativeLatter.Take(30).ToList();
-            Debug.Log($"📝 正式模式：中性詞 30 個，負向詞 30 個");
-        }
-        else
-        {
-            neutralLatter = neutralLatter.Take(3).ToList();
-            negativeLatter = negativeLatter.Take(3).ToList();
-            Debug.Log($"🧪 測試模式：中性詞 3 個，負向詞 3 個");
-        }
-
-        (Color mid, Color other)[] colorCombos = new (Color, Color)[]
-        {
-            (Color.red, Color.red),
-            (Color.green, Color.red),
-            (Color.red, Color.green),
-            (Color.green, Color.green)
-        };
-
-        foreach (var word in negativeLatter)
-        {
-            foreach (var (midColor, otherColor) in colorCombos)
+        // --- 2. 練習階段 (32 trials) ---
+        // 4種情境 x 2種情緒 = 8種組合
+        
+        List<FlankerTaskData> practiceTrials = new List<FlankerTaskData>();
+        
+        // 簡單生成練習試次
+        int practiceRepeats = isTest ? 1 : 4; // 測試模式只跑 1 輪 (8題)，正式跑 4 輪 (32題)
+        for (int i = 0; i < practiceRepeats; i++)
+        { 
+            foreach (var cond in conditions)
             {
-                currentData.Add(new FlankerTaskData
-                {
-                    currentLetter = word,
-                    midColor = midColor,
-                    OtherColor = otherColor,
-                    isNegative = true
-                });
+                // 中性
+                practiceTrials.Add(CreateTrial(cond, EmotionType.Neutral, true));
+                // 負向
+                practiceTrials.Add(CreateTrial(cond, EmotionType.Negative, true));
             }
         }
+        ShuffleList(practiceTrials);
+        currentData.AddRange(practiceTrials);
 
-        foreach (var word in neutralLatter)
+        // --- 3. 正式階段 (384 trials) ---
+        // 4 Blocks, 每個 Block 96 trials
+        
+        List<FlankerTaskData> testTrials = new List<FlankerTaskData>();
+        int blocks = isTest ? 1 : 4; // 測試模式只跑 1 Block
+        int trialsPerBlock = isTest ? 1 : 12; // 測試模式每個 Block 每組合跑 1 次 (共8次)，正式跑 12 次 (共96次)
+        
+        for (int b = 0; b < blocks; b++)
         {
-            foreach (var (midColor, otherColor) in colorCombos)
+            List<FlankerTaskData> blockTrials = new List<FlankerTaskData>();
+            for (int k = 0; k < trialsPerBlock; k++)
             {
-                currentData.Add(new FlankerTaskData
+                foreach (var cond in conditions)
                 {
-                    currentLetter = word,
-                    midColor = midColor,
-                    OtherColor = otherColor,
-                    isNegative = false
-                });
+                    blockTrials.Add(CreateTrial(cond, EmotionType.Neutral, false));
+                    blockTrials.Add(CreateTrial(cond, EmotionType.Negative, false));
+                }
             }
+            ShuffleList(blockTrials);
+            testTrials.AddRange(blockTrials);
         }
+        
+        currentData.AddRange(testTrials);
 
-        ShuffleList(currentData);
         totalTrials = currentData.Count;
-        Debug.Log($"✅ Flanker 任務初始化完成，總題數: {currentData.Count}");
+        Debug.Log($"✅ Flanker 任務初始化完成，總題數: {currentData.Count} (練習: {practiceTrials.Count}, 正式: {testTrials.Count}) Mode: {(isTest ? "TEST" : "FULL")}");
+    }
+
+    private FlankerTaskData CreateTrial((TargetDirection dir, Congruency cong, string stimuli) cond, EmotionType emotion, bool isPractice)
+    {
+        Sprite img = null;
+        if (emotion == EmotionType.Neutral && neutralImages != null && neutralImages.Count > 0)
+            img = neutralImages[Random.Range(0, neutralImages.Count)];
+        else if (emotion == EmotionType.Negative && negativeImages != null && negativeImages.Count > 0)
+            img = negativeImages[Random.Range(0, negativeImages.Count)];
+
+        return new FlankerTaskData
+        {
+            stimulusString = cond.stimuli,
+            targetDirection = cond.dir,
+            congruency = cond.cong,
+            emotion = emotion,
+            emotionImage = img,
+            isPractice = isPractice,
+            stimulusDuration = stimulusDisplayTime / 1000f
+        };
     }
 
     public void ExportFlankerResultsToCSV()
@@ -499,27 +538,38 @@ public class EmotionalFlankerTaskSystem : MonoBehaviour
 #endif
 
         StringBuilder csv = new StringBuilder();
-        csv.AppendLine("Index,Letter,MidColor,OtherColor,IsNegative,IsCorrect,ResponseTime(s),ColorIsSame");
+        csv.AppendLine("Index,Stimulus,Direction,Congruency,Emotion,IsPractice,IsCorrect,ResponseTime(s)");
 
         for (int i = 0; i < currentData.Count; i++)
         {
             var data = currentData[i];
-            string midColorStr = ColorToString(data.midColor);
-            string otherColorStr = ColorToString(data.OtherColor);
-
             csv.AppendLine(
-                $"{i},{data.currentLetter},{midColorStr},{otherColorStr},{data.isNegative},{data.isCorrect},{data.responseTime:F3},{data.colorIsSame}");
+                $"{i},{data.stimulusString},{data.targetDirection},{data.congruency},{data.emotion},{data.isPractice},{data.isCorrect},{data.responseTime:F3}");
         }
 
         csv.AppendLine();
-        csv.AppendLine($"總題數,{totalCount}");
-        csv.AppendLine($"正確題數,{correctCount}");
-        csv.AppendLine($"正確率,{accuracy:F2}%");
-        csv.AppendLine($"平均反應時間（僅計算正確題）,{averageResponseTime:F3}");
+        csv.AppendLine($"總題數 (Total),{totalCount}");
+        csv.AppendLine($"正確題數 (Correct),{correctCount}");
+        csv.AppendLine($"正確率 (Accuracy),{accuracy:F2}%");
+        csv.AppendLine($"平均反應時間 (AvgRT - Correct),{averageResponseTime:F3}");
+        
+        // 簡單的分項統計
+        var testData = currentData.Where(d => !d.isPractice).ToList();
+        if (testData.Count > 0)
+        {
+            int testCorrect = testData.Count(d => d.isCorrect);
+            float testAcc = (float)testCorrect / testData.Count * 100f;
+            float testAvgRT = testData.Where(d => d.isCorrect).Any() ? testData.Where(d => d.isCorrect).Average(d => d.responseTime) : 0;
+            
+            csv.AppendLine($"正式測驗 (Test Phase) 統計:,");
+            csv.AppendLine($"Count,{testData.Count}");
+            csv.AppendLine($"Accuracy,{testAcc:F2}%");
+            csv.AppendLine($"AvgRT,{testAvgRT:F3}");
+        }
 
         try
         {
-            File.WriteAllText(path, csv.ToString());
+            File.WriteAllText(path, csv.ToString(), Encoding.UTF8); // 確保 UTF8，避免亂碼
             string msg = "✅ Flanker CSV 已儲存至: " + path;
             Debug.Log(msg);
             Debug.Log($"👤 受測者 ID: {participantID}");
@@ -564,10 +614,16 @@ public class EmotionalFlankerTaskDataHolder : ScriptableObject
 [System.Serializable]
 public class FlankerTaskData
 {
-    public string currentLetter;
-    public Color midColor, OtherColor;
-    public bool isNegative;
+    public string stimulusString;    // 顯示的字串 (e.g., >>>>>)
+    public EmotionalFlankerTaskSystem.TargetDirection targetDirection; // 目標方向 (Left/Right)
+    public EmotionalFlankerTaskSystem.Congruency congruency; // 一致性 (Congruent/Incongruent)
+    public EmotionalFlankerTaskSystem.EmotionType emotion;   // 情緒 (Neutral/Negative)
+    public Sprite emotionImage;      // 情緒圖片
+    
+    public bool isPractice;          // 是否為練習試次
+    public float stimulusDuration;   // 刺激呈現時間
+    
+    // 結果數據
     public bool isCorrect;
-    public bool colorIsSame;
     public float responseTime;
 }

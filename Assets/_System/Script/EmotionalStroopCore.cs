@@ -23,9 +23,9 @@ public class EmotionalStroopCore : MonoBehaviour
 
     [TitleGroup("試次設定")]
     [LabelText("總負面圖片次數")]
-    [Tooltip("在所有 trials 中負面圖片出現的總次數")]
-    [MinValue(0)]
-    public int totalNegativeAppearances = 360;
+    [Tooltip("此數值由程式自動計算控制，Inspector 設定無效")]
+    [ReadOnly]
+    public int totalNegativeAppearances = 360; // 720 / 2
     
     [LabelText("每個 Block 的試次數")]
     [MinValue(1)]
@@ -202,39 +202,86 @@ public class EmotionalStroopCore : MonoBehaviour
     {
         iconImage.sprite = null;
         currentTrialList.Clear();
+        // isNegativeList 不再使用，因為狀態直接存在 StroopData 中
         isNegativeList.Clear();
 
         if (isTest)
         {
             totalBlocks = 1;
-            trialsPerBlock = 10;
-            totalNegativeAppearances = 5;
-            Debug.Log($"🧪 測試模式：Block 數 = 1, 每 Block 試次數 = 10, 負向圖片 = 5");
+            trialsPerBlock = 12; // 測試用少量: 4 Star, 2 Cong, 2 Inc (x2 emotions) -> 8+4 ? no. 
+            // 簡化測試: Star 4 (2N, 2Neg), Cong 2 (1N, 1Neg), Inc 2 (1N, 1Neg) -> Total 8
+            Debug.Log($"🧪 測試模式：Block 數 = 1, 少量試次");
+        }
+
+        int starPerBlock = 96;
+        int congPerBlock = 24;
+        int incPerBlock = 24;
+
+        if (isTest)
+        {
+            starPerBlock = 4;
+            congPerBlock = 2;
+            incPerBlock = 2;
+            trialsPerBlock = starPerBlock + congPerBlock + incPerBlock;
         }
 
         int totalTrialCount = totalBlocks * trialsPerBlock;
+        int actualNegativeCount = 0;
 
-        // 建立所有 trials
-        for (int i = 0; i < totalTrialCount; i++)
+        for (int b = 0; b < totalBlocks; b++)
         {
-            StroopData data = new StroopData();
-            data.type = (StroopType)(i % 3); // 輪流填充類型（Congruent, Incongruent, StarsArray）
-            currentTrialList.Add(data);
-        }
+            List<StroopData> blockList = new List<StroopData>();
 
-        // 建立負向圖片標記列表
-        for (int i = 0; i < totalTrialCount; i++)
-        {
-            isNegativeList.Add(i < totalNegativeAppearances);
-        }
+            // 1. Star (StarsArray)
+            // 50% Neutral, 50% Negative
+            for (int i = 0; i < starPerBlock; i++)
+            {
+                StroopData data = new StroopData
+                {
+                    type = StroopType.StarsArray,
+                    isNegative = (i < starPerBlock / 2) // 前半負向，後半中性 (之後會shuffle)
+                };
+                blockList.Add(data);
+            }
 
-        // 隨機打亂
-        Shuffle(currentTrialList);
-        Shuffle(isNegativeList);
+            // 2. Congruent
+            for (int i = 0; i < congPerBlock; i++)
+            {
+                StroopData data = new StroopData
+                {
+                    type = StroopType.Congruent,
+                    isNegative = (i < congPerBlock / 2)
+                };
+                blockList.Add(data);
+            }
+
+            // 3. Incongruent
+            for (int i = 0; i < incPerBlock; i++)
+            {
+                StroopData data = new StroopData
+                {
+                    type = StroopType.Incongruent,
+                    isNegative = (i < incPerBlock / 2)
+                };
+                blockList.Add(data);
+            }
+
+            // Shuffle Block
+            Shuffle(blockList);
+            
+            // Add to main list
+            currentTrialList.AddRange(blockList);
+            
+            // Count
+            actualNegativeCount += blockList.Count(d => d.isNegative);
+        }
+        
+        totalNegativeAppearances = actualNegativeCount;
 
         Debug.Log($"✅ Stroop 任務初始化完成");
-        Debug.Log($"📝 總 Block 數: {totalBlocks}, 每 Block 試次數: {trialsPerBlock}, 總試次數: {totalTrialCount}");
-        Debug.Log($"🖼️ 負向圖片次數: {totalNegativeAppearances}, 中性圖片次數: {totalTrialCount - totalNegativeAppearances}");
+        Debug.Log($"📝 總 Block 數: {totalBlocks}, 每 Block 試次數: {trialsPerBlock}, 總試次數: {currentTrialList.Count}");
+        Debug.Log($"   (Star: {currentTrialList.Count(x => x.type == StroopType.StarsArray)}, Cong: {currentTrialList.Count(x => x.type == StroopType.Congruent)}, Inc: {currentTrialList.Count(x => x.type == StroopType.Incongruent)})");
+        Debug.Log($"🖼️ 負向圖片總數: {totalNegativeAppearances}");
     }
 
     private IEnumerator StartExperiment()
@@ -249,9 +296,9 @@ public class EmotionalStroopCore : MonoBehaviour
             Debug.Log($"🚩 Block {currentBlock}/{totalBlocks} 開始");
 
             var blockTrials = currentTrialList.Skip(block * trialsPerBlock).Take(trialsPerBlock).ToList();
-            var blockNegatives = isNegativeList.Skip(block * trialsPerBlock).Take(trialsPerBlock).ToList();
+            // var blockNegatives = isNegativeList.Skip(block * trialsPerBlock).Take(trialsPerBlock).ToList(); // 不再需要
 
-            yield return StartCoroutine(RunBlock(blockTrials, blockNegatives));
+            yield return StartCoroutine(RunBlock(blockTrials));
 
             if (block < totalBlocks - 1)
             {
@@ -267,7 +314,7 @@ public class EmotionalStroopCore : MonoBehaviour
         ShowFinalResult();
     }
 
-    private IEnumerator RunBlock(List<StroopData> trialList, List<bool> negativeList)
+    private IEnumerator RunBlock(List<StroopData> trialList)
     {
         for (int i = 0; i < trialList.Count; i++)
         {
@@ -283,7 +330,7 @@ public class EmotionalStroopCore : MonoBehaviour
 
             // 顯示圖片（負向或中性）
             iconImage.gameObject.SetActive(true);
-            SetImageForTrial(data, negativeList[i]);
+            SetImageForTrial(data, data.isNegative);
             Debug.Log($"  圖片: {(data.isNegative ? "負向" : "中性")}");
             yield return new WaitForSeconds(imageDisplayTime);
             iconImage.gameObject.SetActive(false);
