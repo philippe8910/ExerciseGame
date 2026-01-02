@@ -856,8 +856,11 @@ public class NBackGame : MonoBehaviour
         string path;
 
 #if UNITY_ANDROID && !UNITY_EDITOR
-        string downloadFolder = "/storage/emulated/0/Download/NbackTestData";
+        // Android/Oculus 環境：儲存到 persistentDataPath/NbackTestData 資料夾
+        // 路徑通常是 /storage/emulated/0/Android/data/<package_name>/files/NbackTestData
+        string downloadFolder = Path.Combine(Application.persistentDataPath, "NbackTestData");
         
+        // 確保資料夾存在
         if (!Directory.Exists(downloadFolder))
         {
             try
@@ -868,11 +871,12 @@ public class NBackGame : MonoBehaviour
             catch (Exception e)
             {
                 Debug.LogError($"❌ 無法建立資料夾: {e.Message}");
-                downloadFolder = "/storage/emulated/0/Download";
+                // 如果無法建立，嘗試直接存到 persistentDataPath 根目錄
+                downloadFolder = Application.persistentDataPath;
             }
         }
         
-        path = downloadFolder + "/NBackResults_" + participantID + "_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".csv";
+        path = Path.Combine(downloadFolder, "NBackResults_" + participantID + "_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".csv");
 #else
         string dataFolder = Application.dataPath + "/NbackTestData";
 

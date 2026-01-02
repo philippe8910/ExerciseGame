@@ -173,7 +173,8 @@ public class EmotionalFlankerTaskSystem : MonoBehaviour
         
         // 隱藏圖片與文字
         if (emotionImageDisplay != null) emotionImageDisplay.gameObject.SetActive(false);
-        middleLetter.text = "";
+        middleLetter.color = Color.white;
+		middleLetter.text = "+";
         upperLetter.text = "";
         bottomLetter.text = "";
 
@@ -208,7 +209,7 @@ public class EmotionalFlankerTaskSystem : MonoBehaviour
 
             // 1. 顯示注視點 (+)
             middleLetter.text = "+";
-            middleLetter.color = Color.black; // 注視點黑色
+            middleLetter.color = Color.white; // 注視點黑色
             upperLetter.text = "";
             bottomLetter.text = "";
             if (emotionImageDisplay != null) emotionImageDisplay.gameObject.SetActive(false);
@@ -258,7 +259,8 @@ public class EmotionalFlankerTaskSystem : MonoBehaviour
                 // 刺激顯示時間結束後清空畫面 (但繼續等待反應)
                 if (!stimulusCleared && Time.time - startTime >= stimulusDisplayTimeSec)
                 {
-                    middleLetter.text = "";
+                    middleLetter.text = "+";
+                    middleLetter.color = Color.white; // 改為白色
                     upperLetter.text = "";
                     bottomLetter.text = "";
                     stimulusCleared = true;
@@ -271,6 +273,11 @@ public class EmotionalFlankerTaskSystem : MonoBehaviour
                 {
                     data.responseTime = Time.time - startTime;
                     responded = true;
+                    
+                    // 反應後立即清除
+                    middleLetter.text = "";
+                    upperLetter.text = "";
+                    bottomLetter.text = "";
                     
                     // 判斷正確性
                     // 目標向左 -> 左手觸發為正確
@@ -315,12 +322,10 @@ public class EmotionalFlankerTaskSystem : MonoBehaviour
                 data.responseTime = totalResponseWindow;
                 Debug.Log($"  ⏱ 超時 - 未反應");
                 
-                if (!stimulusCleared)
-                {
-                    middleLetter.text = "";
-                    upperLetter.text = "";
-                    bottomLetter.text = "";
-                }
+                // 超時清除
+                middleLetter.text = "";
+                upperLetter.text = "";
+                bottomLetter.text = "";
             }
 
             externalLeftTrigger = false;
@@ -502,8 +507,9 @@ public class EmotionalFlankerTaskSystem : MonoBehaviour
         string path;
 
 #if UNITY_ANDROID && !UNITY_EDITOR
-        // Android/Oculus 環境：儲存到 Download/FlankerTestData 資料夾
-        string downloadFolder = "/storage/emulated/0/Download/FlankerTestData";
+        // Android/Oculus 環境：儲存到 persistentDataPath/FlankerTestData 資料夾
+        // 路徑通常是 /storage/emulated/0/Android/data/<package_name>/files/FlankerTestData
+        string downloadFolder = Path.Combine(Application.persistentDataPath, "FlankerTestData");
         
         // 確保資料夾存在
         if (!Directory.Exists(downloadFolder))
@@ -516,12 +522,12 @@ public class EmotionalFlankerTaskSystem : MonoBehaviour
             catch (Exception e)
             {
                 Debug.LogError($"❌ 無法建立資料夾: {e.Message}");
-                // 如果無法建立資料夾，直接存在 Download 根目錄
-                downloadFolder = "/storage/emulated/0/Download";
+                // 如果無法建立資料夾，直接存在根目錄
+                downloadFolder = Application.persistentDataPath;
             }
         }
         
-        path = downloadFolder + "/FlankerResults_" + participantID + "_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".csv";
+        path = Path.Combine(downloadFolder, "FlankerResults_" + participantID + "_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".csv");
 #else
         // Unity Editor 或其他平台：儲存到 Application.dataPath
         string dataFolder = Application.dataPath + "/FlankerTestData";

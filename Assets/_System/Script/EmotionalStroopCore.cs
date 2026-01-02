@@ -502,8 +502,9 @@ public class EmotionalStroopCore : MonoBehaviour
         string path;
 
 #if UNITY_ANDROID && !UNITY_EDITOR
-        // Android/Oculus 環境：儲存到 Download/StroopTestData 資料夾
-        string downloadFolder = "/storage/emulated/0/Download/StroopTestData";
+        // Android/Oculus 環境：儲存到 persistentDataPath/StroopTestData 資料夾
+         // 路徑通常是 /storage/emulated/0/Android/data/<package_name>/files/StroopTestData
+        string downloadFolder = Path.Combine(Application.persistentDataPath, "StroopTestData");
         
         // 確保資料夾存在
         if (!Directory.Exists(downloadFolder))
@@ -516,12 +517,12 @@ public class EmotionalStroopCore : MonoBehaviour
             catch (Exception e)
             {
                 Debug.LogError($"❌ 無法建立資料夾: {e.Message}");
-                // 如果無法建立資料夾，直接存在 Download 根目錄
-                downloadFolder = "/storage/emulated/0/Download";
+                // 如果無法建立資料夾，直接存在根目錄
+                downloadFolder = Application.persistentDataPath;
             }
         }
         
-        path = downloadFolder + "/StroopResults_" + participantID + "_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".csv";
+        path = Path.Combine(downloadFolder, "StroopResults_" + participantID + "_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".csv");
 #else
         // Unity Editor 或其他平台：儲存到 Application.dataPath
         string dataFolder = Application.dataPath + "/StroopTestData";
