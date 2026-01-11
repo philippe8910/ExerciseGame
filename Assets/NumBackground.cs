@@ -12,7 +12,7 @@ public class NumBackground : MonoBehaviour , IData
     
     private void Start()
     {
-        RandomStarEnable(Random.Range(1, 5));
+        RandomStarEnable(Random.Range(1, 4));
     }
 
     [Button]

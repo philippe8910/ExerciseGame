@@ -134,63 +134,63 @@ public class EmotionalStroopCore : MonoBehaviour
 
         if (negativeImageList == null || negativeImageList.Count == 0)
         {
-            Debug.LogError("❌ negativeImageList 未設定或為空！");
+            Debug.LogError(" negativeImageList 未設定或為空！");
             gameStatus = "素材缺失";
             isValid = false;
         }
 
         if (neutralImageList == null || neutralImageList.Count == 0)
         {
-            Debug.LogError("❌ neutralImageList 未設定或為空！");
+            Debug.LogError(" neutralImageList 未設定或為空！");
             gameStatus = "素材缺失";
             isValid = false;
         }
 
         if (iconContainer == null)
         {
-            Debug.LogError("❌ iconContainer 未綁定！");
+            Debug.LogError(" iconContainer 未綁定！");
             gameStatus = "組件缺失";
             isValid = false;
         }
 
         if (iconImage == null)
         {
-            Debug.LogError("❌ iconImage 未綁定！");
+            Debug.LogError(" iconImage 未綁定！");
             gameStatus = "組件缺失";
             isValid = false;
         }
 
         if (crossHairImage == null)
         {
-            Debug.LogError("❌ crossHairImage 未綁定！");
+            Debug.LogError(" crossHairImage 未綁定！");
             gameStatus = "組件缺失";
             isValid = false;
         }
 
         if (restPanel == null)
         {
-            Debug.LogError("❌ restPanel 未綁定！");
+            Debug.LogError(" restPanel 未綁定！");
             gameStatus = "組件缺失";
             isValid = false;
         }
 
         if (endPanel == null)
         {
-            Debug.LogError("❌ endPanel 未綁定！");
+            Debug.LogError(" endPanel 未綁定！");
             gameStatus = "組件缺失";
             isValid = false;
         }
 
         if (congruentPrefab == null || incongruentPrefab == null || starsArrayPrefab == null)
         {
-            Debug.LogError("❌ Prefab 未完整設定！");
+            Debug.LogError(" Prefab 未完整設定！");
             gameStatus = "Prefab 缺失";
             isValid = false;
         }
 
         if (isValid)
         {
-            Debug.Log("✅ 所有組件檢查通過");
+            Debug.Log(" 所有組件檢查通過");
         }
 
         return isValid;
@@ -210,7 +210,7 @@ public class EmotionalStroopCore : MonoBehaviour
             totalBlocks = 1;
             trialsPerBlock = 12; // 測試用少量: 4 Star, 2 Cong, 2 Inc (x2 emotions) -> 8+4 ? no. 
             // 簡化測試: Star 4 (2N, 2Neg), Cong 2 (1N, 1Neg), Inc 2 (1N, 1Neg) -> Total 8
-            Debug.Log($"🧪 測試模式：Block 數 = 1, 少量試次");
+            Debug.Log($" 測試模式：Block 數 = 1, 少量試次");
         }
 
         int starPerBlock = 96;
@@ -278,10 +278,10 @@ public class EmotionalStroopCore : MonoBehaviour
         
         totalNegativeAppearances = actualNegativeCount;
 
-        Debug.Log($"✅ Stroop 任務初始化完成");
-        Debug.Log($"📝 總 Block 數: {totalBlocks}, 每 Block 試次數: {trialsPerBlock}, 總試次數: {currentTrialList.Count}");
+        Debug.Log($" Stroop 任務初始化完成");
+        Debug.Log($" 總 Block 數: {totalBlocks}, 每 Block 試次數: {trialsPerBlock}, 總試次數: {currentTrialList.Count}");
         Debug.Log($"   (Star: {currentTrialList.Count(x => x.type == StroopType.StarsArray)}, Cong: {currentTrialList.Count(x => x.type == StroopType.Congruent)}, Inc: {currentTrialList.Count(x => x.type == StroopType.Incongruent)})");
-        Debug.Log($"🖼️ 負向圖片總數: {totalNegativeAppearances}");
+        Debug.Log($"️ 負向圖片總數: {totalNegativeAppearances}");
     }
 
     private IEnumerator StartExperiment()
@@ -293,7 +293,7 @@ public class EmotionalStroopCore : MonoBehaviour
         {
             currentBlock = block + 1;
             gameStatus = $"Block {currentBlock}/{totalBlocks} 進行中";
-            Debug.Log($"🚩 Block {currentBlock}/{totalBlocks} 開始");
+            Debug.Log($"Block {currentBlock}/{totalBlocks} 開始");
 
             var blockTrials = currentTrialList.Skip(block * trialsPerBlock).Take(trialsPerBlock).ToList();
             // var blockNegatives = isNegativeList.Skip(block * trialsPerBlock).Take(trialsPerBlock).ToList(); // 不再需要
@@ -304,7 +304,7 @@ public class EmotionalStroopCore : MonoBehaviour
             {
                 gameStatus = "休息中";
                 restPanel.SetActive(true);
-                Debug.Log("🛋️ 請休息，同時按下雙手 Trigger 開始下一回合");
+                Debug.Log("請休息，同時按下雙手 Trigger 開始下一回合");
                 yield return StartCoroutine(WaitForBothHandsTrigger());
                 restPanel.SetActive(false);
             }
@@ -340,7 +340,7 @@ public class EmotionalStroopCore : MonoBehaviour
             GameObject stimulusObject = InstantiateTrialPrefab(data.type);
             if (stimulusObject == null)
             {
-                Debug.LogError($"❌ 無法實例化 {data.type} Prefab！");
+                Debug.LogError($" 無法實例化 {data.type} Prefab！");
                 continue;
             }
 
@@ -470,9 +470,9 @@ public class EmotionalStroopCore : MonoBehaviour
         float accuracy = (float)correct / total * 100f;
         float avgTime = currentTrialList.Where(d => d.isCorrect).Select(d => d.responseTime).DefaultIfEmpty(0).Average();
 
-        Debug.Log("======= ✅ Stroop 任務完成！統計結果： =======");
-        Debug.Log($"🎯 正確率：{correct}/{total}（{accuracy:F2}%）");
-        Debug.Log($"⏱️ 平均反應時間（正確題）：{avgTime:F3} 秒");
+        Debug.Log("======= Stroop 任務完成！統計結果： =======");
+        Debug.Log($"正確率：{correct}/{total}（{accuracy:F2}%）");
+        Debug.Log($"平均反應時間（正確題）：{avgTime:F3} 秒");
 
         endPanel.SetActive(true);
         ExportStroopResultsToCSV();
@@ -484,7 +484,7 @@ public class EmotionalStroopCore : MonoBehaviour
     public void SetTriggerNumber(int number)
     {
         triggerNumber = number;
-        Debug.Log($"🔢 觸發數字: {number}");
+        Debug.Log($"觸發數字: {number}");
     }
 
     public void ExportStroopResultsToCSV()
@@ -492,7 +492,7 @@ public class EmotionalStroopCore : MonoBehaviour
         // 測試模式下不儲存資料
         if (isTest)
         {
-            Debug.Log("🧪 測試模式：不儲存 CSV 資料");
+            Debug.Log("測試模式：不儲存 CSV 資料");
             return;
         }
 
@@ -512,11 +512,11 @@ public class EmotionalStroopCore : MonoBehaviour
             try
             {
                 Directory.CreateDirectory(downloadFolder);
-                Debug.Log($"📁 建立資料夾: {downloadFolder}");
+                Debug.Log($" 建立資料夾: {downloadFolder}");
             }
             catch (Exception e)
             {
-                Debug.LogError($"❌ 無法建立資料夾: {e.Message}");
+                Debug.LogError($" 無法建立資料夾: {e.Message}");
                 // 如果無法建立資料夾，直接存在根目錄
                 downloadFolder = Application.persistentDataPath;
             }
@@ -531,7 +531,7 @@ public class EmotionalStroopCore : MonoBehaviour
         if (!Directory.Exists(dataFolder))
         {
             Directory.CreateDirectory(dataFolder);
-            Debug.Log($"📁 建立資料夾: {dataFolder}");
+            Debug.Log($" 建立資料夾: {dataFolder}");
         }
 
         path = dataFolder + "/StroopResults_" + participantID + "_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".csv";
@@ -570,12 +570,12 @@ public class EmotionalStroopCore : MonoBehaviour
         try
         {
             File.WriteAllText(path, csv.ToString());
-            Debug.Log($"✅ Stroop CSV 已儲存至: {path}");
-            Debug.Log($"👤 受測者 ID: {participantID}");
+            Debug.Log($"Stroop CSV 已儲存至: {path}");
+            Debug.Log($"受測者 ID: {participantID}");
         }
         catch (Exception e)
         {
-            Debug.LogError($"❌ 無法寫入Stroop CSV: {e.Message}");
+            Debug.LogError($" 無法寫入Stroop CSV: {e.Message}");
         }
     }
 

@@ -2090,7 +2090,7 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Materials.Array.data[0]
       value: 
-      objectReference: {fileID: 2100000, guid: 396d6bec4be7f4105abb1eff9d19287b, type: 2}
+      objectReference: {fileID: 2100000, guid: bbbd804512ed5d84d9b500514550f34a, type: 2}
     - target: {fileID: -8016412588606473749, guid: 9118500b0abd44047b78e30d99248d9f,
         type: 3}
       propertyPath: m_BlendShapeWeights.Array.data[0]
@@ -2125,7 +2125,7 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Materials.Array.data[0]
       value: 
-      objectReference: {fileID: 2100000, guid: 396d6bec4be7f4105abb1eff9d19287b, type: 2}
+      objectReference: {fileID: 2100000, guid: bbbd804512ed5d84d9b500514550f34a, type: 2}
     - target: {fileID: -4202798675411607032, guid: 9118500b0abd44047b78e30d99248d9f,
         type: 3}
       propertyPath: m_BlendShapeWeights.Array.data[0]

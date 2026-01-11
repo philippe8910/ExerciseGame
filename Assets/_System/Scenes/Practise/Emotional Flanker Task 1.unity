@@ -2006,7 +2006,7 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Materials.Array.data[0]
       value: 
-      objectReference: {fileID: 2100000, guid: 1d840e64bf0ad474d9ec7f3e5ee04128, type: 2}
+      objectReference: {fileID: 2100000, guid: bbbd804512ed5d84d9b500514550f34a, type: 2}
     - target: {fileID: -8016412588606473749, guid: 9118500b0abd44047b78e30d99248d9f,
         type: 3}
       propertyPath: m_BlendShapeWeights.Array.data[0]
@@ -2041,7 +2041,7 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Materials.Array.data[0]
       value: 
-      objectReference: {fileID: 2100000, guid: 1d840e64bf0ad474d9ec7f3e5ee04128, type: 2}
+      objectReference: {fileID: 2100000, guid: bbbd804512ed5d84d9b500514550f34a, type: 2}
     - target: {fileID: -4202798675411607032, guid: 9118500b0abd44047b78e30d99248d9f,
         type: 3}
       propertyPath: m_BlendShapeWeights.Array.data[0]
@@ -4677,7 +4677,7 @@ Light:
   m_BounceIntensity: 0.59
   m_ColorTemperature: 6570
   m_UseColorTemperature: 0
-  m_BoundingSphereOverride: {x: 8.4e-43, y: 0, z: 0, w: 8e-44}
+  m_BoundingSphereOverride: {x: 0, y: 4.48e-43, z: 0, w: 0}
   m_UseBoundingSphereOverride: 0
   m_UseViewFrustumForShadowCasterCull: 1
   m_ShadowRadius: 0
