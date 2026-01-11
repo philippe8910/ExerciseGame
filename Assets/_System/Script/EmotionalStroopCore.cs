@@ -24,16 +24,15 @@ public class EmotionalStroopCore : MonoBehaviour
     [TitleGroup("試次設定")]
     [LabelText("總負面圖片次數")]
     [Tooltip("此數值由程式自動計算控制，Inspector 設定無效")]
-    [ReadOnly]
     public int totalNegativeAppearances = 360; // 720 / 2
     
-    [LabelText("每個 Block 的試次數")]
+    [LabelText("總試次數")]
     [MinValue(1)]
-    public int trialsPerBlock = 144;
-    
-    [LabelText("總 Block 數")]
-    [MinValue(1)]
-    public int totalBlocks = 5;
+    public int totalTrials = 720;
+
+    [LabelText("幾次試次後休息 (0 = 不休息)")]
+    [MinValue(0)]
+    public int trialsBeforeRest = 0;
 
     [TitleGroup("UI 組件")]
     [Required, SceneObjectsOnly]
@@ -90,18 +89,16 @@ public class EmotionalStroopCore : MonoBehaviour
     [ReadOnly, ShowInInspector]
     private string gameStatus = "等待開始";
     
-    [ReadOnly, ShowInInspector]
-    private int currentBlock = 0;
-    
-    [ReadOnly, ShowInInspector, ProgressBar(0, "trialsPerBlock")]
-    private int currentTrialInBlock = 0;
+    [ReadOnly, ShowInInspector, ProgressBar(0, "totalTrials")]
+    private int currentTrialIndex = 0;
 
     [TitleGroup("統計資訊")]
     [ReadOnly, ShowInInspector]
     private int totalCorrect = 0;
     
+    // totalTrials exists as config now
     [ReadOnly, ShowInInspector]
-    private int totalTrials = 0;
+    private int validTrialsCount = 0;
     
     [ReadOnly, ShowInInspector, SuffixLabel("%", true)]
     private float currentAccuracy = 0f;
@@ -202,86 +199,158 @@ public class EmotionalStroopCore : MonoBehaviour
     {
         iconImage.sprite = null;
         currentTrialList.Clear();
-        // isNegativeList 不再使用，因為狀態直接存在 StroopData 中
         isNegativeList.Clear();
 
-        if (isTest)
-        {
-            totalBlocks = 1;
-            trialsPerBlock = 12; // 測試用少量: 4 Star, 2 Cong, 2 Inc (x2 emotions) -> 8+4 ? no. 
-            // 簡化測試: Star 4 (2N, 2Neg), Cong 2 (1N, 1Neg), Inc 2 (1N, 1Neg) -> Total 8
-            Debug.Log($" 測試模式：Block 數 = 1, 少量試次");
-        }
-
-        int starPerBlock = 96;
-        int congPerBlock = 24;
-        int incPerBlock = 24;
-
-        if (isTest)
-        {
-            starPerBlock = 4;
-            congPerBlock = 2;
-            incPerBlock = 2;
-            trialsPerBlock = starPerBlock + congPerBlock + incPerBlock;
-        }
-
-        int totalTrialCount = totalBlocks * trialsPerBlock;
-        int actualNegativeCount = 0;
-
-        for (int b = 0; b < totalBlocks; b++)
-        {
-            List<StroopData> blockList = new List<StroopData>();
-
-            // 1. Star (StarsArray)
-            // 50% Neutral, 50% Negative
-            for (int i = 0; i < starPerBlock; i++)
-            {
-                StroopData data = new StroopData
-                {
-                    type = StroopType.StarsArray,
-                    isNegative = (i < starPerBlock / 2) // 前半負向，後半中性 (之後會shuffle)
-                };
-                blockList.Add(data);
-            }
-
-            // 2. Congruent
-            for (int i = 0; i < congPerBlock; i++)
-            {
-                StroopData data = new StroopData
-                {
-                    type = StroopType.Congruent,
-                    isNegative = (i < congPerBlock / 2)
-                };
-                blockList.Add(data);
-            }
-
-            // 3. Incongruent
-            for (int i = 0; i < incPerBlock; i++)
-            {
-                StroopData data = new StroopData
-                {
-                    type = StroopType.Incongruent,
-                    isNegative = (i < incPerBlock / 2)
-                };
-                blockList.Add(data);
-            }
-
-            // Shuffle Block
-            Shuffle(blockList);
-            
-            // Add to main list
-            currentTrialList.AddRange(blockList);
-            
-            // Count
-            actualNegativeCount += blockList.Count(d => d.isNegative);
-        }
+        // 實驗設計：
+        // Formal: 5 Blocks * 144 Trials = 720 Total
+        // Image IDs: 1-72 (Indices 0-71)
+        // Each Block: All 72 images appear once (as Negative or Neutral context, but script treats lists separately)
+        // Correction: User said "Negative & Neutral 72 images each". So we assume negativeImageList has 72 and neutralImageList has 72.
+        // Rule: "每張刺激物在同一個 block 內只會出現一次" -> 72 Neg + 72 Neu = 144 ? 
+        // Or one set of 72 images used for both? Typically Stroop uses distinct sets or same set. 
+        // "負向中性各 72 張刺激物" suggests 72 distinct Negative images and 72 distinct Neutral images. Total 144 unique images.
+        // 144 trials per block matches 72 Neg + 72 Neu perfectly if each appears once.
         
-        totalNegativeAppearances = actualNegativeCount;
+        // Conditions per Block (144 trials):
+        // Star: 480 / 5 = 96 trials (User wrote "Star 有 480 次嘗試次" in total 720)
+        // Cong: 120 / 5 = 24 trials
+        // Inc:  120 / 5 = 24 trials
+        // Total: 96 + 24 + 24 = 144. Matches.
+        
+        // Image Distribution in Block (144 trials):
+        // We have 72 Neg images and 72 Neu images. Total 144.
+        // We need to map these 144 images to the 144 trials (96 Star, 24 Cong, 24 Inc).
+        // Proportions:
+        // Neg: 48 Star, 12 Cong, 12 Inc = 72
+        // Neu: 48 Star, 12 Cong, 12 Inc = 72
+        // Total: 96 Star, 24 Cong, 24 Inc. Matches.
+
+        if (isTest) // Practice Mode
+        {
+            // 練習階段 24 題
+            // 六種情境 (3*2) 各 4 次 -> Star/Neg:4, Star/Neu:4, Cong/Neg:4, Cong/Neu:4, Inc/Neg:4, Inc/Neu:4
+            // Total: 12 Neg, 12 Neu.
+            // Images: #73-#78 (Indices 72-77), 6 images each.
+            // Each image repeated 2 times. 6 * 2 = 12. Matches.
+            
+            Debug.Log("初始化：練習模式 (Practice)");
+            totalTrials = 24;
+            trialsBeforeRest = 0; // 練習通常不休息，或結束後休息
+
+            List<int> practiceIndices = new List<int> { 72, 73, 74, 75, 76, 77 }; // 假設 list 足夠長
+            
+            // Generate Practice Trials
+            List<StroopData> practiceTrials = GenerateBlockTrials(
+                starCount: 8, congCount: 8, incCount: 8, // Total 24
+                negImages: GetPracticeImages(negativeImageList, practiceIndices),
+                neuImages: GetPracticeImages(neutralImageList, practiceIndices)
+            );
+            
+            currentTrialList = practiceTrials;
+        }
+        else // Formal Mode
+        {
+            Debug.Log("初始化：正式模式 (Formal)");
+            totalTrials = 720;
+            trialsBeforeRest = 144; // 144題休息一次
+
+            int blockCount = 5;
+            // Config per block
+            int starPerBlock = 96;
+            int congPerBlock = 24;
+            int incPerBlock = 24;
+            
+            for (int b = 0; b < blockCount; b++)
+            {
+                // Each block uses all 72 Neg and 72 Neu images exactly once
+                // Indices 0-71
+                List<Sprite> blockNegs = negativeImageList.Take(72).ToList();
+                List<Sprite> blockNeus = neutralImageList.Take(72).ToList();
+                
+                // Shuffle images to assign randomly to conditions
+                Shuffle(blockNegs);
+                Shuffle(blockNeus);
+                
+                List<StroopData> blockTrials = GenerateBlockTrials(
+                    starPerBlock, congPerBlock, incPerBlock,
+                    blockNegs, blockNeus
+                );
+                
+                currentTrialList.AddRange(blockTrials);
+            }
+        }
+
+        totalNegativeAppearances = currentTrialList.Count(d => d.isNegative);
 
         Debug.Log($" Stroop 任務初始化完成");
-        Debug.Log($" 總 Block 數: {totalBlocks}, 每 Block 試次數: {trialsPerBlock}, 總試次數: {currentTrialList.Count}");
-        Debug.Log($"   (Star: {currentTrialList.Count(x => x.type == StroopType.StarsArray)}, Cong: {currentTrialList.Count(x => x.type == StroopType.Congruent)}, Inc: {currentTrialList.Count(x => x.type == StroopType.Incongruent)})");
-        Debug.Log($"️ 負向圖片總數: {totalNegativeAppearances}");
+        Debug.Log($" 模式: {(isTest ? "練習" : "正式")}");
+        Debug.Log($" 總試次數: {currentTrialList.Count}");
+        Debug.Log($" 休息間隔: {trialsBeforeRest}");
+    }
+
+    private List<Sprite> GetPracticeImages(List<Sprite> source, List<int> indices)
+    {
+        List<Sprite> images = new List<Sprite>();
+        foreach (int idx in indices)
+        {
+            if (idx < source.Count) images.Add(source[idx]);
+        }
+        // Repeat twice to get 12 images from 6
+        var result = new List<Sprite>(images);
+        result.AddRange(images); 
+        return result; 
+        // Note: result size should be 12 if indices valid.
+    }
+
+    private List<StroopData> GenerateBlockTrials(int starCount, int congCount, int incCount, List<Sprite> negImages, List<Sprite> neuImages)
+    {
+        // Total images needed: Star+Cong+Inc (half Neg, half Neu)
+        // Input lists shouls match requirements
+        
+        List<StroopData> blockList = new List<StroopData>();
+        
+        int negIndex = 0;
+        int neuIndex = 0;
+
+        // 1. Star
+        // Half Neg, Half Neu
+        for (int i = 0; i < starCount; i++)
+        {
+            bool isNeg = (i < starCount / 2);
+            blockList.Add(new StroopData 
+            { 
+                type = StroopType.StarsArray, 
+                isNegative = isNeg,
+                assignedSprite = isNeg ? negImages[negIndex++] : neuImages[neuIndex++]
+            });
+        }
+
+        // 2. Congruent
+        for (int i = 0; i < congCount; i++)
+        {
+            bool isNeg = (i < congCount / 2);
+            blockList.Add(new StroopData 
+            { 
+                type = StroopType.Congruent, 
+                isNegative = isNeg,
+                assignedSprite = isNeg ? negImages[negIndex++] : neuImages[neuIndex++]
+            });
+        }
+
+        // 3. Incongruent
+        for (int i = 0; i < incCount; i++)
+        {
+            bool isNeg = (i < incCount / 2);
+            blockList.Add(new StroopData 
+            { 
+                type = StroopType.Incongruent, 
+                isNegative = isNeg,
+                assignedSprite = isNeg ? negImages[negIndex++] : neuImages[neuIndex++]
+            });
+        }
+
+        Shuffle(blockList);
+        return blockList;
     }
 
     private IEnumerator StartExperiment()
@@ -289,26 +358,7 @@ public class EmotionalStroopCore : MonoBehaviour
         gameStatus = "準備中";
         yield return StartCoroutine(WaitForGameStart());
 
-        for (int block = 0; block < totalBlocks; block++)
-        {
-            currentBlock = block + 1;
-            gameStatus = $"Block {currentBlock}/{totalBlocks} 進行中";
-            Debug.Log($"Block {currentBlock}/{totalBlocks} 開始");
-
-            var blockTrials = currentTrialList.Skip(block * trialsPerBlock).Take(trialsPerBlock).ToList();
-            // var blockNegatives = isNegativeList.Skip(block * trialsPerBlock).Take(trialsPerBlock).ToList(); // 不再需要
-
-            yield return StartCoroutine(RunBlock(blockTrials));
-
-            if (block < totalBlocks - 1)
-            {
-                gameStatus = "休息中";
-                restPanel.SetActive(true);
-                Debug.Log("請休息，同時按下雙手 Trigger 開始下一回合");
-                yield return StartCoroutine(WaitForBothHandsTrigger());
-                restPanel.SetActive(false);
-            }
-        }
+            yield return StartCoroutine(RunBlock(currentTrialList));
 
         gameStatus = "測試完成";
         ShowFinalResult();
@@ -318,10 +368,10 @@ public class EmotionalStroopCore : MonoBehaviour
     {
         for (int i = 0; i < trialList.Count; i++)
         {
-            currentTrialInBlock = i + 1;
+            currentTrialIndex = i + 1;
             StroopData data = trialList[i];
 
-            Debug.Log($"▶ Block {currentBlock}, 試次 {currentTrialInBlock}/{trialsPerBlock}");
+            Debug.Log($"▶ 試次 {currentTrialIndex}/{trialList.Count}");
 
             // 顯示注視點
             crossHairImage.gameObject.SetActive(true);
@@ -330,8 +380,9 @@ public class EmotionalStroopCore : MonoBehaviour
 
             // 顯示圖片（負向或中性）
             iconImage.gameObject.SetActive(true);
-            SetImageForTrial(data, data.isNegative);
-            Debug.Log($"  圖片: {(data.isNegative ? "負向" : "中性")}");
+            // SetImageForTrial(data, data.isNegative); // Removed, using pre-assigned
+            iconImage.sprite = data.assignedSprite;
+            Debug.Log($"  圖片: {(data.isNegative ? "負向" : "中性")} - {data.assignedSprite?.name}");
             yield return new WaitForSeconds(imageDisplayTime);
             iconImage.gameObject.SetActive(false);
             iconImage.sprite = null;
@@ -393,6 +444,19 @@ public class EmotionalStroopCore : MonoBehaviour
 
             Destroy(stimulusObject);
             triggerNumber = -1; // 重置觸發數字
+
+            // 檢查是否需要休息
+            // 如果 trialsBeforeRest > 0 且 當前試次是 trialsBeforeRest 的倍數
+            // 且 不是本 Block 的最後一次試次 (避免與 Block 間的休息重疊)
+            if (trialsBeforeRest > 0 && (i + 1) < trialList.Count && (i + 1) % trialsBeforeRest == 0)
+            {
+                gameStatus = "休息中";
+                restPanel.SetActive(true);
+                Debug.Log($"已進行 {i + 1} 次試次，進入階段性休息。請按下雙手 Trigger 繼續");
+                yield return StartCoroutine(WaitForBothHandsTrigger());
+                restPanel.SetActive(false);
+                gameStatus = $"進行中: {i + 1}/{trialList.Count}";
+            }
         }
     }
 
@@ -420,18 +484,7 @@ public class EmotionalStroopCore : MonoBehaviour
         Debug.Log("✓ 雙手 Trigger 已按下，繼續實驗");
     }
 
-    private void SetImageForTrial(StroopData data, bool isNegative)
-    {
-        data.isNegative = isNegative;
-        if (isNegative)
-        {
-            iconImage.sprite = negativeImageList[Random.Range(0, negativeImageList.Count)];
-        }
-        else
-        {
-            iconImage.sprite = neutralImageList[Random.Range(0, neutralImageList.Count)];
-        }
-    }
+    // SetImageForTrial Removed - Handled in Init via assignedSprite
 
     private GameObject InstantiateTrialPrefab(StroopType type)
     {
@@ -457,9 +510,9 @@ public class EmotionalStroopCore : MonoBehaviour
 
     void UpdateStatistics()
     {
-        totalTrials = currentTrialList.Count(d => d.responseTime > 0);
+        validTrialsCount = currentTrialList.Count(d => d.responseTime > 0);
         totalCorrect = currentTrialList.Count(d => d.isCorrect);
-        currentAccuracy = totalTrials > 0 ? (float)totalCorrect / totalTrials * 100f : 0f;
+        currentAccuracy = validTrialsCount > 0 ? (float)totalCorrect / validTrialsCount * 100f : 0f;
         averageResponseTime = currentTrialList.Where(d => d.isCorrect).Select(d => d.responseTime).DefaultIfEmpty(0).Average();
     }
 
@@ -603,5 +656,6 @@ public class StroopData
     public StroopType type;
     public bool isCorrect;
     public bool isNegative;
+    public Sprite assignedSprite;
     public float responseTime;
 }
